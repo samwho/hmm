@@ -1,8 +1,7 @@
-use colored::*;
 use hmm::{config, error::Error, Result};
 use std::env;
 use std::fs::OpenOptions;
-use std::io::{stderr, BufReader, BufWriter, Read, Write};
+use std::io::{stderr, BufWriter, Read, Write};
 use std::process::{exit, Command};
 use tempfile::NamedTempFile;
 
@@ -59,29 +58,4 @@ fn write_entry(w: impl Write, msg: String) -> Result<()> {
     let now = chrono::Utc::now();
     let mut writer = csv::Writer::from_writer(w);
     Ok(writer.write_record(&[now.to_rfc3339(), msg])?)
-}
-
-fn print_entries(r: impl Read) -> Result<()> {
-    for record in csv::Reader::from_reader(r).into_records() {
-        match record {
-            Ok(e) => print_entry(e)?,
-            Err(e) => return Err(e.into()),
-        }
-    }
-    Ok(())
-}
-
-fn print_entry(sr: csv::StringRecord) -> Result<()> {
-    let date = sr.get(0).unwrap();
-    let msg = sr.get(1).unwrap();
-
-    let datetime = chrono::DateTime::parse_from_rfc3339(date)?;
-
-    let wrapper = textwrap::Wrapper::with_termwidth()
-        .initial_indent("| ")
-        .subsequent_indent("| ");
-
-    println!("{}", datetime.format("%Y-%m-%d %H:%M").to_string().blue());
-    println!("{}\n", wrapper.fill(msg));
-    Ok(())
 }

@@ -25,3 +25,7 @@ codegen-units = 1
 [[bin]]
 name = "hmm"
 path = "src/bin/hmm.rs"
+
+[[bin]]
+name = "hmmq"
+path = "src/bin/hmmq.rs"
