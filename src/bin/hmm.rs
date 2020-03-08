@@ -1,17 +1,24 @@
-use std::env::args;
-use std::fs::OpenOptions;
-use std::result::Result;
-use std::io::{Read, Write, BufReader, BufWriter};
-
 use colored::*;
+use hmm::{config, error::Error, Result};
+use std::env;
+use std::fs::OpenOptions;
+use std::io::{stderr, BufReader, BufWriter, Read, Write};
+use std::process::{exit, Command};
+use tempfile::NamedTempFile;
 
-use hmm::error::Error;
-use hmm::config;
+fn main() {
+    if let Err(e) = app() {
+        if let Err(write_e) = writeln!(&mut stderr(), "{}", e) {
+            panic!(write_e);
+        }
+        exit(1);
+    }
+}
 
-fn main() -> Result<(), Error> {
+fn app() -> Result<()> {
     let config = config::get()?;
 
-    let arg = itertools::join(args().skip(1), " ");
+    let mut msg = itertools::join(env::args().skip(1), " ");
     let f = OpenOptions::new()
         .read(true)
         .write(true)
@@ -19,22 +26,42 @@ fn main() -> Result<(), Error> {
         .create(true)
         .open(config.path)?;
 
-    if arg.is_empty() {
-        print_entries(BufReader::new(f))?;
-    } else {
-        write_entry(BufWriter::new(f), arg)?;
+    if msg.is_empty() {
+        if let Some(editor) = config.editor {
+            msg = compose_entry(editor)?;
+        } else if let Ok(editor) = env::var("EDITOR") {
+            msg = compose_entry(editor)?;
+        } else {
+            return Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", config::path().to_str().unwrap())));
+        }
     }
 
+    write_entry(BufWriter::new(f), msg)?;
     Ok(())
 }
 
-fn write_entry(w: impl Write, msg: String) -> Result<(), Error> {
+fn compose_entry(editor: String) -> Result<String> {
+    let mut f = NamedTempFile::new()?;
+    let path = f.path().as_os_str();
+
+    let status = Command::new(editor).arg(path).status()?;
+    
+    if !status.success() {
+        return Err(Error::StringError("something went wrong composing entry, please try again".to_owned()));
+    }
+
+    let mut s = String::new();
+    f.read_to_string(&mut s)?;
+    Ok(s)
+}
+
+fn write_entry(w: impl Write, msg: String) -> Result<()> {
     let now = chrono::Utc::now();
     let mut writer = csv::Writer::from_writer(w);
     Ok(writer.write_record(&[now.to_rfc3339(), msg])?)
 }
 
-fn print_entries(r: impl Read) -> Result<(), Error> {
+fn print_entries(r: impl Read) -> Result<()> {
     for record in csv::Reader::from_reader(r).into_records() {
         match record {
             Ok(e) => print_entry(e)?,
@@ -44,13 +71,15 @@ fn print_entries(r: impl Read) -> Result<(), Error> {
     Ok(())
 }
 
-fn print_entry(sr: csv::StringRecord) -> Result<(), Error> {
+fn print_entry(sr: csv::StringRecord) -> Result<()> {
     let date = sr.get(0).unwrap();
     let msg = sr.get(1).unwrap();
 
     let datetime = chrono::DateTime::parse_from_rfc3339(date)?;
 
-    let wrapper = textwrap::Wrapper::with_termwidth().initial_indent("| ").subsequent_indent("| ");
+    let wrapper = textwrap::Wrapper::with_termwidth()
+        .initial_indent("| ")
+        .subsequent_indent("| ");
 
     println!("{}", datetime.format("%Y-%m-%d %H:%M").to_string().blue());
     println!("{}\n", wrapper.fill(msg));

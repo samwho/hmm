@@ -9,12 +9,13 @@ edition = "2018"
 [dependencies]
 csv = "1.1"
 chrono = "0.4.11"
-dirs = "2.0.2"
+directories = "2.0.2"
 itertools = "0.9.0"
 textwrap = { version = "0.11", features = ["term_size"] }
 colored = "1.9"
 confy = "0.3.1"
 serde = { version = "1.0.104", features = ["derive"] }
+tempfile = "3.1.0"
 
 [profile.release]
 opt-level = 'z'  # Optimize for size.

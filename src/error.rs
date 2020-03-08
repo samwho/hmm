@@ -5,6 +5,7 @@ pub enum Error {
     Io(io::Error),
     Csv(csv::Error),
     ChronoParse(chrono::format::ParseError),
+    StringError(String),
 }
 
 impl error::Error for Error {
@@ -13,6 +14,7 @@ impl error::Error for Error {
             Error::Io(ref err) => err.description(),
             Error::Csv(ref err) => err.description(),
             Error::ChronoParse(ref err) => err.description(),
+            Error::StringError(ref s) => s,
         }
     }
 }
@@ -23,6 +25,7 @@ impl fmt::Display for Error {
             Error::Io(ref err) => err.fmt(f),
             Error::Csv(ref err) => err.fmt(f),
             Error::ChronoParse(ref err) => err.fmt(f),
+            Error::StringError(ref s) => f.write_str(s),
         }
     }
 }
