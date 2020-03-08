@@ -1,12 +1,13 @@
 use std::env::args;
-use std::error::Error;
 use std::fs::OpenOptions;
 use std::result::Result;
 use std::io::{Read, Write, BufReader, BufWriter};
 
 use colored::*;
 
-fn main() -> Result<(), Box<dyn Error>> {
+use hmm::error::Error;
+
+fn main() -> Result<(), Error> {
     let arg = itertools::join(args().skip(1), " ");
     let home = dirs::home_dir().unwrap();
     let f = OpenOptions::new()
@@ -25,13 +26,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn write_entry(w: impl Write, msg: String) -> Result<(), Box<dyn Error>> {
+fn write_entry(w: impl Write, msg: String) -> Result<(), Error> {
     let now = chrono::Utc::now();
     let mut writer = csv::Writer::from_writer(w);
     Ok(writer.write_record(&[now.to_rfc3339(), msg])?)
 }
 
-fn print_entries(r: impl Read) -> Result<(), Box<dyn Error>> {
+fn print_entries(r: impl Read) -> Result<(), Error> {
     for record in csv::Reader::from_reader(r).into_records() {
         match record {
             Ok(e) => print_entry(e)?,
@@ -41,7 +42,7 @@ fn print_entries(r: impl Read) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn print_entry(sr: csv::StringRecord) -> Result<(), Box<dyn Error>> {
+fn print_entry(sr: csv::StringRecord) -> Result<(), Error> {
     let date = sr.get(0).unwrap();
     let msg = sr.get(1).unwrap();
 
