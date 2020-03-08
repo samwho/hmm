@@ -21,10 +21,7 @@ fn app() -> Result<()> {
 
 fn print_entries(config: &Config, r: impl Read) -> Result<()> {
     for record in csv::Reader::from_reader(r).into_records() {
-        match record {
-            Ok(e) => print_entry(config, e)?,
-            Err(e) => return Err(e.into()),
-        }
+        print_entry(config, record?)?
     }
     Ok(())
 }
