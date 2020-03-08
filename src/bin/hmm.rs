@@ -1,4 +1,4 @@
-use hmm::{config, error::Error, Result};
+use hmm::{config::Config, error::Error, Result};
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufWriter, Read, Write};
@@ -15,7 +15,7 @@ fn main() {
 }
 
 fn app() -> Result<()> {
-    let config = config::get()?;
+    let config = Config::default();
 
     let mut msg = itertools::join(env::args().skip(1), " ");
     let f = OpenOptions::new()
@@ -23,16 +23,10 @@ fn app() -> Result<()> {
         .write(true)
         .append(true)
         .create(true)
-        .open(config.path)?;
+        .open(config.path()?)?;
 
     if msg.is_empty() {
-        if let Some(editor) = config.editor {
-            msg = compose_entry(editor)?;
-        } else if let Ok(editor) = env::var("EDITOR") {
-            msg = compose_entry(editor)?;
-        } else {
-            return Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", config::path().to_str().unwrap())));
-        }
+        msg = compose_entry(config.editor()?)?;
     }
 
     write_entry(BufWriter::new(f), msg)?;

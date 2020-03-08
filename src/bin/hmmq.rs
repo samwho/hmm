@@ -1,4 +1,4 @@
-use hmm::{config, Result};
+use hmm::{config::Config, Result};
 use colored::*;
 use std::io::{stderr, BufReader, Write, Read};
 use std::fs::File;
@@ -14,22 +14,22 @@ fn main() {
 }
 
 fn app() -> Result<()> {
-    let config = config::get()?;
-    print_entries(BufReader::new(File::open(config.path)?))?;
+    let config = Config::default();
+    print_entries(&config, BufReader::new(File::open(config.path()?)?))?;
     Ok(())
 }
 
-fn print_entries(r: impl Read) -> Result<()> {
+fn print_entries(config: &Config, r: impl Read) -> Result<()> {
     for record in csv::Reader::from_reader(r).into_records() {
         match record {
-            Ok(e) => print_entry(e)?,
+            Ok(e) => print_entry(config, e)?,
             Err(e) => return Err(e.into()),
         }
     }
     Ok(())
 }
 
-fn print_entry(sr: csv::StringRecord) -> Result<()> {
+fn print_entry(config: &Config, sr: csv::StringRecord) -> Result<()> {
     let date = sr.get(0).unwrap();
     let msg = sr.get(1).unwrap();
 
@@ -39,7 +39,7 @@ fn print_entry(sr: csv::StringRecord) -> Result<()> {
         .initial_indent("| ")
         .subsequent_indent("| ");
 
-    println!("{}", datetime.format("%Y-%m-%d %H:%M").to_string().blue());
+    println!("{}", datetime.format(&config.date_format()).to_string().blue());
     println!("{}\n", wrapper.fill(msg));
     Ok(())
 }

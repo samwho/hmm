@@ -1,22 +1,50 @@
 use std::default::Default;
 use std::path::PathBuf;
+use std::env;
 use serde::{Serialize, Deserialize};
 use super::Result;
+use super::error::Error;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub path: PathBuf,
-    pub editor: Option<String>,
+    path: Option<PathBuf>,
+    date_format: Option<String>,
+    editor: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let dirs = directories::UserDirs::new()
-            .expect("no home directory found, make sure your $HOME environment variable is set");
+        confy::load("hmm").unwrap()
+    }
+}
 
-        Config {
-            path: dirs.home_dir().to_path_buf(),
-            editor: None,
+impl Config {
+    pub fn path(&self) -> Result<PathBuf> {
+        let p = match &self.path {
+            Some(ref path) => path.to_owned(),
+            None => {
+                let dirs = directories::UserDirs::new().unwrap();
+                dirs.home_dir().to_path_buf().to_owned()
+            }
+        };
+        Ok(p)
+    }
+
+    pub fn editor(&self) -> Result<String> {
+        if let Some(editor) = &self.editor {
+            Ok(editor.to_owned())
+        } else if let Ok(editor) = env::var("EDITOR") {
+            Ok(editor.to_owned())
+        } else {
+            Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", path().to_str().unwrap())))
+        }
+    }
+
+    pub fn date_format(&self) -> String {
+        if let Some(date_format) = &self.date_format {
+            date_format.to_owned()
+        } else {
+            "%Y-%m-%d %H:%M".to_owned()
         }
     }
 }
