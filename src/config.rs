@@ -1,6 +1,21 @@
+use std::default::Default;
+use std::path::PathBuf;
+use crate::error::Error;
+use serde::{Serialize, Deserialize};
 
-pub fn settings() {
-    // let path = dirs::config_dir()?.join("hmm/config");
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Config {
+    pub path: PathBuf,
+}
 
-    // let mut s = config::Config::default()
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            path: dirs::home_dir().expect("no home directory found, can't run without one").join(".hmm")
+        }
+    }
+}
+
+pub fn get() -> Result<Config, Error> {
+    Ok(confy::load("hmm")?)
 }

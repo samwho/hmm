@@ -1,2 +1,2 @@
 pub mod error;
-mod config;
+pub mod config;

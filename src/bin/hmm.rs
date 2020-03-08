@@ -6,16 +6,18 @@ use std::io::{Read, Write, BufReader, BufWriter};
 use colored::*;
 
 use hmm::error::Error;
+use hmm::config;
 
 fn main() -> Result<(), Error> {
+    let config = config::get()?;
+
     let arg = itertools::join(args().skip(1), " ");
-    let home = dirs::home_dir().unwrap();
     let f = OpenOptions::new()
         .read(true)
         .write(true)
         .append(true)
         .create(true)
-        .open(home.join(".hmm"))?;
+        .open(config.path)?;
 
     if arg.is_empty() {
         print_entries(BufReader::new(f))?;
