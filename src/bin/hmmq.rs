@@ -3,6 +3,7 @@ use colored::*;
 use std::io::{stderr, BufReader, Write, Read};
 use std::fs::File;
 use std::process::{exit};
+use chrono::{DateTime, Local};
 
 fn main() {
     if let Err(e) = app() {
@@ -30,7 +31,7 @@ fn print_entry(config: &Config, sr: csv::StringRecord) -> Result<()> {
     let date = sr.get(0).unwrap();
     let msg = sr.get(1).unwrap();
 
-    let datetime = chrono::DateTime::parse_from_rfc3339(date)?;
+    let datetime: DateTime<Local> = DateTime::from(chrono::DateTime::parse_from_rfc3339(date)?);
 
     let wrapper = textwrap::Wrapper::with_termwidth()
         .initial_indent("| ")
