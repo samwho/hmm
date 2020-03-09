@@ -32,6 +32,7 @@ fn app(opt: Opt) -> Result<()> {
 
     for _ in 0..=opt.num_entries {
         if let None = r.prev_line()? {
+            // Without this the first call to next_line will return the second line.
             r.bof();
             break;
         }
@@ -49,7 +50,6 @@ fn app(opt: Opt) -> Result<()> {
             .from_reader(line.as_bytes());
 
         if !rdr.read_record(&mut record)? {
-            println!("break mid");
             break;
         }
 
