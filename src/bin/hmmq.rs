@@ -1,9 +1,8 @@
 use chrono::{DateTime, Local};
 use colored::*;
-use easy_reader::EasyReader;
-use hmm::{config::Config, Result};
+use hmm::{config::Config, Result, bsearch::seek_first};
 use std::fs::File;
-use std::io::{stderr, BufReader, Read, Write};
+use std::io::{stderr, BufReader, Seek, SeekFrom, BufRead, Write};
 use std::process::exit;
 use structopt::StructOpt;
 
@@ -12,6 +11,12 @@ use structopt::StructOpt;
 struct Opt {
     #[structopt(short = "n", default_value = "10")]
     num_entries: usize,
+
+    #[structopt(short = "s", long = "start")]
+    start: Option<String>,
+
+    #[structopt(short = "e", long = "end")]
+    end: Option<String>,
 }
 
 fn main() {
@@ -27,27 +32,23 @@ fn main() {
 fn app(opt: Opt) -> Result<()> {
     let config = Config::default();
 
-    let mut r = EasyReader::new(File::open(config.path()?)?)?;
-    r.eof();
+    let mut f = BufReader::new(File::open(config.path()?)?);
+    let mut record = csv::StringRecord::new();
+    let mut buf = String::new();
 
-    for _ in 0..=opt.num_entries {
-        if let None = r.prev_line()? {
-            // Without this the first call to next_line will return the second line.
-            r.bof();
-            break;
+    if let Some(ref prefix) = opt.start {
+        if let None = seek_first(&mut f, prefix)? {
+            return Ok(());
         }
     }
 
-    let mut record = csv::StringRecord::new();
-
-    while let Ok(Some(line)) = r.next_line() {
-        if line.is_empty() {
-            continue;
-        }
+    loop {
+        buf.clear();
+        f.read_line(&mut buf)?;
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
-            .from_reader(line.as_bytes());
+            .from_reader(buf.as_bytes());
 
         if !rdr.read_record(&mut record)? {
             break;
