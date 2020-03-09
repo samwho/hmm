@@ -15,7 +15,10 @@ textwrap = { version = "0.11", features = ["term_size"] }
 colored = "1.9"
 confy = "0.3.1"
 serde = { version = "1.0.104", features = ["derive"] }
+serde_json = "1.0"
 tempfile = "3.1.0"
+easy_reader = "0.5.0"
+structopt = { version = "0.3", default-features = false }
 
 [profile.release]
 opt-level = 'z'  # Optimize for size.

@@ -26,14 +26,14 @@ fn app() -> Result<()> {
         .open(config.path()?)?;
 
     if msg.is_empty() {
-        msg = compose_entry(config.editor()?)?;
+        msg = compose_entry(&config.editor()?)?;
     }
 
-    write_entry(BufWriter::new(f), msg)?;
+    write_entry(BufWriter::new(f), msg.trim())?;
     Ok(())
 }
 
-fn compose_entry(editor: String) -> Result<String> {
+fn compose_entry(editor: &str) -> Result<String> {
     let mut f = NamedTempFile::new()?;
     let path = f.path().as_os_str();
 
@@ -48,8 +48,9 @@ fn compose_entry(editor: String) -> Result<String> {
     Ok(s)
 }
 
-fn write_entry(w: impl Write, msg: String) -> Result<()> {
+fn write_entry(w: impl Write, msg: &str) -> Result<()> {
     let now = chrono::Utc::now();
     let mut writer = csv::Writer::from_writer(w);
-    Ok(writer.write_record(&[now.to_rfc3339(), msg])?)
+    
+    Ok(writer.write_record(&[now.to_rfc3339(), serde_json::to_string(&msg)?])?)
 }
