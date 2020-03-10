@@ -36,6 +36,9 @@ fn app(opt: Opt) -> Result<()> {
     let mut record = csv::StringRecord::new();
     let mut buf = String::new();
 
+    let mut reader_builder = csv::ReaderBuilder::new();
+    reader_builder.has_headers(false);
+
     if let Some(ref prefix) = opt.start {
         if seek_first(&mut f, prefix)?.is_none() {
             return Ok(());
@@ -46,11 +49,8 @@ fn app(opt: Opt) -> Result<()> {
         buf.clear();
         f.read_line(&mut buf)?;
 
-        let mut rdr = csv::ReaderBuilder::new()
-            .has_headers(false)
-            .from_reader(buf.as_bytes());
-
-        if !rdr.read_record(&mut record)? {
+        let mut r = reader_builder.from_reader(buf.as_bytes());
+        if !r.read_record(&mut record)? {
             break;
         }
 
