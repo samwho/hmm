@@ -20,6 +20,9 @@ tempfile = "3.1.0"
 easy_reader = "0.5.0"
 structopt = { version = "0.3", default-features = false }
 
+[dev-dependencies]
+test-case = "1.0.0"
+
 [profile.release]
 opt-level = 'z'  # Optimize for size.
 lto = true

@@ -118,6 +118,7 @@ fn seek_start_of_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
 mod tests {
     use super::*;
     use std::io::{BufRead, Seek, SeekFrom, Cursor};
+    use test_case::test_case;
 
     fn str_reader(s: &str) -> Cursor<&[u8]> {
         Cursor::new(s.as_bytes())
@@ -129,84 +130,21 @@ mod tests {
         Ok(buf)
     }
 
-    #[test]
-    fn test_seek_start_of_line_in_middle() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(3))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 1\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_start() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(0))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 1\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_end() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(6))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 1\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_end_of_middle_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(13))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 2\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_in_middle_of_middle_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(12))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 2\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_start_of_middle_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(7))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 2\n", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_start_of_last_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(14))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 3", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_in_middle_of_last_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::Start(15))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 3", read_line(&mut r)?);
-        Ok(())
-    }
-
-    #[test]
-    fn test_seek_start_of_line_at_end_of_last_line() -> Result<()> {
-        let mut r = str_reader("line 1\nline 2\nline 3");
-        r.seek(SeekFrom::End(0))?;
-        seek_start_of_line(&mut r)?;
-        assert_eq!("line 3", read_line(&mut r)?);
-        Ok(())
+    #[test_case("",                       0  => ""         ; "empty file")]
+    #[test_case("line 1\nline 2\nline 3", 0  => "line 1\n" ; "start of first line")]
+    #[test_case("line 1\nline 2\nline 3", 3  => "line 1\n" ; "middle of first line")]
+    #[test_case("line 1\nline 2\nline 3", 6  => "line 1\n" ; "end of first line")]
+    #[test_case("line 1\nline 2\nline 3", 7  => "line 2\n" ; "start of second line")]
+    #[test_case("line 1\nline 2\nline 3", 12 => "line 2\n" ; "middle of second line")]
+    #[test_case("line 1\nline 2\nline 3", 13 => "line 2\n" ; "end of second line")]
+    #[test_case("line 1\nline 2\nline 3", 14 => "line 3"   ; "start of third line")]
+    #[test_case("line 1\nline 2\nline 3", 15 => "line 3"   ; "middle of third line")]
+    #[test_case("line 1\nline 2\nline 3", 19 => "line 3"   ; "end of third line")]
+    #[test_case("line 1\nline 2\nline 3", 26 => "line 3"   ; "past eof")]
+    fn test_seek_start(s: &str, pos: u64) -> String {
+        let mut r = str_reader(s);
+        r.seek(SeekFrom::Start(pos)).unwrap();
+        seek_start_of_line(&mut r).unwrap();
+        read_line(&mut r).unwrap()
     }
 }
