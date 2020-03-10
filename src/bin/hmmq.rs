@@ -108,7 +108,7 @@ fn parse_date_arg(s: &str) -> Result<DateTime<Utc>> {
     if let Ok(d) = parse_local_datetime_str(&format!("{}:00", s), "%Y-%m-%dT%H:%M:%S") {
         return Ok(d);
     }
-    if let Ok(d) = parse_local_datetime_str(&format!("{}", s), "%Y-%m-%dT%H:%M:%S") {
+    if let Ok(d) = parse_local_datetime_str(s, "%Y-%m-%dT%H:%M:%S") {
         return Ok(d);
     }
 
@@ -120,7 +120,7 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
     let local_result = Utc.from_local_datetime(&d);
     Ok(local_result
         .earliest()
-        .unwrap_or(local_result.latest().unwrap_or(local_result.unwrap())))
+        .unwrap_or_else(|| local_result.latest().unwrap_or_else(|| local_result.unwrap())))
 }
 
 #[cfg(test)]
