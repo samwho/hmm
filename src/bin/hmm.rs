@@ -38,9 +38,11 @@ fn compose_entry(editor: &str) -> Result<String> {
     let path = f.path().as_os_str();
 
     let status = Command::new(editor).arg(path).status()?;
-    
+
     if !status.success() {
-        return Err(Error::StringError("something went wrong composing entry, please try again".to_owned()));
+        return Err(Error::StringError(
+            "something went wrong composing entry, please try again".to_owned(),
+        ));
     }
 
     let mut s = String::new();
@@ -51,6 +53,6 @@ fn compose_entry(editor: &str) -> Result<String> {
 fn write_entry(w: impl Write, msg: &str) -> Result<()> {
     let now = chrono::Utc::now();
     let mut writer = csv::Writer::from_writer(w);
-    
+
     Ok(writer.write_record(&[now.to_rfc3339(), serde_json::to_string(&msg)?])?)
 }

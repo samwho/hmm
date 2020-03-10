@@ -1,8 +1,8 @@
 use chrono::{DateTime, Local};
 use colored::*;
-use hmm::{config::Config, Result, bsearch::seek_first};
+use hmm::{bsearch::seek_first, config::Config, Result};
 use std::fs::File;
-use std::io::{stderr, BufReader, Seek, SeekFrom, BufRead, Write};
+use std::io::{stderr, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::process::exit;
 use structopt::StructOpt;
 

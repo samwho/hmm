@@ -1,9 +1,9 @@
-use std::default::Default;
-use std::path::PathBuf;
-use std::env;
-use serde::{Serialize, Deserialize};
-use super::Result;
 use super::error::Error;
+use super::Result;
+use serde::{Deserialize, Serialize};
+use std::default::Default;
+use std::env;
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -54,5 +54,8 @@ pub fn get() -> Result<Config> {
 }
 
 pub fn path() -> PathBuf {
-    directories::ProjectDirs::from("rs", "hmm", "hmm").unwrap().config_dir().join("hmm.toml")
+    directories::ProjectDirs::from("rs", "hmm", "hmm")
+        .unwrap()
+        .config_dir()
+        .join("hmm.toml")
 }

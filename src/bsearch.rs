@@ -1,6 +1,6 @@
-use std::io::{Seek, SeekFrom, Read, ErrorKind};
 use super::Result;
 use std::cmp::Ordering;
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
 pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>> {
     let mut end = f.seek(SeekFrom::End(0))?;
@@ -12,7 +12,6 @@ pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>
         if end <= start {
             break;
         }
-
 
         let cur = start + (end - start) / 2;
 
@@ -27,34 +26,32 @@ pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>
                 } else {
                     return Err(e.into());
                 }
-            },
+            }
         }
 
         match bytes.cmp(&buf) {
             Ordering::Less => {
                 end = cur - 1;
-            },
-            Ordering::Equal => {
-                loop {
-                    if line_start == 0 {
-                        f.seek(SeekFrom::Start(line_start))?;
-                        return Ok(Some(line_start));
-                    }
+            }
+            Ordering::Equal => loop {
+                if line_start == 0 {
+                    f.seek(SeekFrom::Start(line_start))?;
+                    return Ok(Some(line_start));
+                }
 
-                    f.seek(SeekFrom::Start(line_start - 1))?;
-                    let new_start = seek_start_of_line(f)?;
-                    f.read_exact(&mut buf)?;
-                    if let Ordering::Greater = bytes.cmp(&buf) {
-                        f.seek(SeekFrom::Start(line_start))?;
-                        return Ok(Some(line_start));
-                    } else {
-                        line_start = new_start;
-                    }
+                f.seek(SeekFrom::Start(line_start - 1))?;
+                let new_start = seek_start_of_line(f)?;
+                f.read_exact(&mut buf)?;
+                if let Ordering::Greater = bytes.cmp(&buf) {
+                    f.seek(SeekFrom::Start(line_start))?;
+                    return Ok(Some(line_start));
+                } else {
+                    line_start = new_start;
                 }
             },
             Ordering::Greater => {
                 start = cur + 1;
-            },
+            }
         }
     }
 
@@ -117,7 +114,7 @@ fn seek_start_of_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{BufRead, Seek, SeekFrom, Cursor};
+    use std::io::{BufRead, Cursor, Seek, SeekFrom};
     use test_case::test_case;
 
     fn str_reader(s: &str) -> Cursor<&[u8]> {

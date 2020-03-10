@@ -1,4 +1,4 @@
-use std::{io, fmt, error};
+use std::{error, fmt, io};
 
 #[derive(Debug)]
 pub enum Error {
