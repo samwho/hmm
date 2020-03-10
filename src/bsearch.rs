@@ -2,6 +2,15 @@ use super::Result;
 use std::cmp::Ordering;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
+// seek_first takes a Seek + Read and a string prefix and will seek to either
+// the first exact match of the prefix or the match lexicographically closest.
+// Its use is intended to seek a file to the line closest matching a given
+// ISO8601 datetime string, for printing out hmm entries.
+//
+// If this function gets to the end of the file and can't find a match, it will
+// return Ok(None).assert_eq! If it gets to the start of the file, it will
+// return Ok(0) as the rest of the file is lexicographically later than the
+// given prefix.
 pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>> {
     let mut end = f.seek(SeekFrom::End(0))?;
     let mut start = f.seek(SeekFrom::Start(0))?;
@@ -21,6 +30,9 @@ pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>
         match f.read_exact(&mut buf) {
             Ok(_) => (),
             Err(e) => {
+                // We read past the end of the file, which means we can't
+                // possibly find a match in this file, so we return Ok(None) to
+                // signal that the match happens after the content of the file.
                 if e.kind() == ErrorKind::UnexpectedEof {
                     return Ok(None);
                 } else {
@@ -31,14 +43,28 @@ pub fn seek_first<T: Seek + Read>(f: &mut T, prefix: &str) -> Result<Option<u64>
 
         match bytes.cmp(&buf) {
             Ordering::Less => {
+                if cur == 0 {
+                    // We've been given a prefix that occurs before the first
+                    // line of the file, so we return the start of the file.
+                    // This is expected behaviour when searching for all entries
+                    // between, say, 2018 and 2019 but you only have entries in
+                    // 2019.
+                    return Ok(Some(0));
+                }
                 end = cur - 1;
             }
             Ordering::Equal => loop {
+                // First line of the file has matched exactly, so we seek to the
+                // start and return.
                 if line_start == 0 {
                     f.seek(SeekFrom::Start(line_start))?;
                     return Ok(Some(line_start));
                 }
 
+                // We've matched exactly but because we've been jumping through
+                // the file in a binary search fashion, we may not be at the
+                // earliest possible match. Scan backwards through the file
+                // until we get to a non-exact match.
                 f.seek(SeekFrom::Start(line_start - 1))?;
                 let new_start = seek_start_of_line(f)?;
                 f.read_exact(&mut buf)?;
@@ -143,5 +169,17 @@ mod tests {
         r.seek(SeekFrom::Start(pos)).unwrap();
         seek_start_of_line(&mut r).unwrap();
         read_line(&mut r).unwrap()
+    }
+
+    #[test_case("a\nb\nc\nd\ne\nf\ng", "b" => Some(2)  ; "find line in middle of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng", "a" => Some(0)  ; "find first line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng", "g" => Some(12) ; "find last line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng", "h" => None     ; "seek past end of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng", "A" => Some(0)  ; "find prefix before first line")]
+    #[test_case("a\nb\nb\nb\nb\nb\nc", "b" => Some(2)  ; "make sure we seek to the first occurrence")]
+    #[test_case("b\nb\nb\nb\nb\nb\nc", "b" => Some(0)  ; "even if the first occurence is at the start of the file")]
+    fn test_seek_first(s: &str, prefix: &str) -> Option<u64> {
+        let mut r = str_reader(s);
+        seek_first(&mut r, prefix).unwrap()
     }
 }
