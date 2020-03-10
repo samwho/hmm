@@ -1,11 +1,11 @@
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use colored::*;
-use hmm::{bsearch::seek_first, config::Config, Result};
+use hmm::{bsearch::seek_first, config::Config, error::Error, Result};
+use std::cmp::Ordering;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::process::exit;
 use structopt::StructOpt;
-use std::cmp::Ordering;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
@@ -40,8 +40,14 @@ fn app(opt: Opt) -> Result<()> {
     let mut reader_builder = csv::ReaderBuilder::new();
     reader_builder.has_headers(false);
 
-    if let Some(ref prefix) = opt.start {
-        if seek_first(&mut f, prefix)?.is_none() {
+    let ed = match opt.end {
+        Some(ref end) => parse_date_arg(end)?.to_rfc3339(),
+        None => "".to_owned(),
+    };
+
+    if let Some(ref start) = opt.start {
+        let sd = parse_date_arg(start)?;
+        if seek_first(&mut f, &sd.to_rfc3339())?.is_none() {
             return Ok(());
         }
     }
@@ -50,8 +56,8 @@ fn app(opt: Opt) -> Result<()> {
         buf.clear();
         f.read_line(&mut buf)?;
 
-        if let Some(ref end) = opt.end {
-            if let Ordering::Greater = buf.as_bytes().cmp(end.as_bytes()) {
+        if opt.end.is_some() {
+            if let Ordering::Greater = buf.as_bytes().cmp(ed.as_bytes()) {
                 break;
             }
         }
@@ -84,4 +90,51 @@ fn print_entry(config: &Config, sr: &csv::StringRecord) -> Result<()> {
     let decoded: String = serde_json::from_str(&msg)?;
     println!("{}\n", wrapper.fill(&decoded));
     Ok(())
+}
+
+fn parse_date_arg(s: &str) -> Result<DateTime<Utc>> {
+    if let Ok(d) = parse_local_datetime_str(&format!("{}-01-01T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+    if let Ok(d) = parse_local_datetime_str(&format!("{}-01T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+    if let Ok(d) = parse_local_datetime_str(&format!("{}T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+    if let Ok(d) = parse_local_datetime_str(&format!("{}:00:00", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+    if let Ok(d) = parse_local_datetime_str(&format!("{}:00", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+    if let Ok(d) = parse_local_datetime_str(&format!("{}", s), "%Y-%m-%dT%H:%M:%S") {
+        return Ok(d);
+    }
+
+    Err(Error::StringError(format!("unrecognised date format: \"{}\", accepted formats include things like:\n  - 2012\n  - 2012-01\n  - 2012-01-24\n  - 2012-01-24T16\n  - 2012-01-24T16:20\n  - 2012-01-24T16:20:30", s)))
+}
+
+fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
+    let d = NaiveDateTime::parse_from_str(s, format)?;
+    let local_result = Utc.from_local_datetime(&d);
+    Ok(local_result
+        .earliest()
+        .unwrap_or(local_result.latest().unwrap_or(local_result.unwrap())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+
+    #[test_case("2012"                => "2012-01-01T00:00:00+00:00" ; "y")]
+    #[test_case("2012-02"             => "2012-02-01T00:00:00+00:00" ; "ym")]
+    #[test_case("2012-02-02"          => "2012-02-02T00:00:00+00:00" ; "ymd")]
+    #[test_case("2012-02-02T02"       => "2012-02-02T02:00:00+00:00" ; "ymdh")]
+    #[test_case("2012-02-02T02:02"    => "2012-02-02T02:02:00+00:00" ; "ymdhm")]
+    #[test_case("2012-02-02T02:02:02" => "2012-02-02T02:02:02+00:00" ; "ymdhms")]
+    fn test_parse_date_arg(s: &str) -> String {
+        parse_date_arg(s).unwrap().to_rfc3339()
+    }
 }
