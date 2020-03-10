@@ -10,13 +10,13 @@ pub enum Error {
 }
 
 impl error::Error for Error {
-    fn description(&self) -> &str {
+    fn cause(&self) -> Option<&dyn error::Error> {
         match *self {
-            Error::Io(ref err) => err.description(),
-            Error::Csv(ref err) => err.description(),
-            Error::ChronoParse(ref err) => err.description(),
-            Error::SerdeJson(ref err) => err.description(),
-            Error::StringError(ref s) => s,
+            Error::Io(ref err) => Some(err),
+            Error::Csv(ref err) => Some(err),
+            Error::ChronoParse(ref err) => Some(err),
+            Error::SerdeJson(ref err) => Some(err),
+            Error::StringError(_) => None,
         }
     }
 }

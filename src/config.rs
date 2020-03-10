@@ -24,7 +24,7 @@ impl Config {
             Some(ref path) => path.to_owned(),
             None => {
                 let dirs = directories::UserDirs::new().unwrap();
-                dirs.home_dir().to_path_buf().to_owned()
+                dirs.home_dir().to_path_buf()
             }
         };
         Ok(p)
@@ -34,7 +34,7 @@ impl Config {
         if let Some(editor) = &self.editor {
             Ok(editor.to_owned())
         } else if let Ok(editor) = env::var("EDITOR") {
-            Ok(editor.to_owned())
+            Ok(editor)
         } else {
             Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", path().to_str().unwrap())))
         }

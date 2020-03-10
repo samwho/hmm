@@ -2,7 +2,7 @@ use chrono::{DateTime, Local};
 use colored::*;
 use hmm::{bsearch::seek_first, config::Config, Result};
 use std::fs::File;
-use std::io::{stderr, BufRead, BufReader, Seek, SeekFrom, Write};
+use std::io::{stderr, BufRead, BufReader, Write};
 use std::process::exit;
 use structopt::StructOpt;
 
@@ -37,7 +37,7 @@ fn app(opt: Opt) -> Result<()> {
     let mut buf = String::new();
 
     if let Some(ref prefix) = opt.start {
-        if let None = seek_first(&mut f, prefix)? {
+        if seek_first(&mut f, prefix)?.is_none() {
             return Ok(());
         }
     }
