@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::process::exit;
 use structopt::StructOpt;
+use std::cmp::Ordering;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
@@ -48,6 +49,12 @@ fn app(opt: Opt) -> Result<()> {
     loop {
         buf.clear();
         f.read_line(&mut buf)?;
+
+        if let Some(ref end) = opt.end {
+            if let Ordering::Greater = buf.as_bytes().cmp(end.as_bytes()) {
+                break;
+            }
+        }
 
         let mut r = reader_builder.from_reader(buf.as_bytes());
         if !r.read_record(&mut record)? {
