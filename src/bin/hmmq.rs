@@ -118,9 +118,11 @@ fn parse_date_arg(s: &str) -> Result<DateTime<Utc>> {
 fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
     let d = NaiveDateTime::parse_from_str(s, format)?;
     let local_result = Utc.from_local_datetime(&d);
-    Ok(local_result
-        .earliest()
-        .unwrap_or_else(|| local_result.latest().unwrap_or_else(|| local_result.unwrap())))
+    Ok(local_result.earliest().unwrap_or_else(|| {
+        local_result
+            .latest()
+            .unwrap_or_else(|| local_result.unwrap())
+    }))
 }
 
 #[cfg(test)]
