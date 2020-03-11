@@ -1,6 +1,6 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use colored::*;
-use hmm::{bsearch::seek_first, config::Config, entry::Entry, error::Error, Result};
+use hmm::{bsearch::{seek, SeekType}, config::Config, entry::Entry, error::Error, Result};
 use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::fs::File;
@@ -11,6 +11,9 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
 struct Opt {
+    #[structopt(long = "descending")]
+    descending: bool,
+
     #[structopt(short = "n", default_value = "10")]
     num_entries: usize,
 
@@ -51,7 +54,7 @@ fn app(opt: Opt) -> Result<()> {
 
     if let Some(ref start) = opt.start {
         let sd = parse_date_arg(start)?;
-        if seek_first(&mut f, &sd.to_rfc3339())?.is_none() {
+        if seek(&mut f, &sd.to_rfc3339(), SeekType::First)?.is_none() {
             return Ok(());
         }
     }
