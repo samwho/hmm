@@ -1,7 +1,8 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use colored::*;
-use hmm::{bsearch::seek_first, config::Config, error::Error, Result};
+use hmm::{bsearch::seek_first, config::Config, entry::Entry, error::Error, Result};
 use std::cmp::Ordering;
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::process::exit;
@@ -18,6 +19,9 @@ struct Opt {
 
     #[structopt(short = "e", long = "end")]
     end: Option<String>,
+
+    #[structopt(short = "c", long = "contains")]
+    contains: Option<String>,
 }
 
 fn main() {
@@ -67,28 +71,35 @@ fn app(opt: Opt) -> Result<()> {
             break;
         }
 
-        print_entry(&config, &record)?;
+        let entry: Entry = (&record).try_into()?;
+
+        if let Some(ref contains) = opt.contains {
+            if !entry.message().contains(contains) {
+                continue;
+            }
+        }
+
+        print_entry(&config, &entry)?;
     }
 
     Ok(())
 }
 
-fn print_entry(config: &Config, sr: &csv::StringRecord) -> Result<()> {
-    let date = sr.get(0).unwrap();
-    let msg = sr.get(1).unwrap();
-
-    let datetime: DateTime<Local> = DateTime::from(chrono::DateTime::parse_from_rfc3339(date)?);
-
+fn print_entry(config: &Config, entry: &Entry) -> Result<()> {
     let wrapper = textwrap::Wrapper::with_termwidth()
         .initial_indent("| ")
         .subsequent_indent("| ");
 
     println!(
         "{}",
-        datetime.format(&config.date_format()).to_string().blue()
+        entry
+            .datetime()
+            .with_timezone(&Local)
+            .format(&config.date_format())
+            .to_string()
+            .blue()
     );
-    let decoded: String = serde_json::from_str(&msg)?;
-    println!("{}\n", wrapper.fill(&decoded));
+    println!("{}\n", wrapper.fill(entry.message()));
     Ok(())
 }
 
