@@ -1,10 +1,16 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use colored::*;
-use hmm::{bsearch::{seek, SeekType}, config::Config, entry::Entry, error::Error, Result};
+use hmm::{
+    bsearch::{seek, seek_start_of_prev_line, SeekType},
+    config::Config,
+    entry::Entry,
+    error::Error,
+    Result,
+};
 use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::fs::File;
-use std::io::{stderr, BufRead, BufReader, Write};
+use std::io::{stderr, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::process::exit;
 use structopt::StructOpt;
 
@@ -14,8 +20,8 @@ struct Opt {
     #[structopt(long = "descending")]
     descending: bool,
 
-    #[structopt(short = "n", default_value = "10")]
-    num_entries: usize,
+    #[structopt(short = "n")]
+    num_entries: Option<usize>,
 
     #[structopt(short = "s", long = "start")]
     start: Option<String>,
@@ -52,37 +58,102 @@ fn app(opt: Opt) -> Result<()> {
         None => "".to_owned(),
     };
 
-    if let Some(ref start) = opt.start {
-        let sd = parse_date_arg(start)?;
-        if seek(&mut f, &sd.to_rfc3339(), SeekType::First)?.is_none() {
-            return Ok(());
-        }
-    }
+    let sd = match opt.start {
+        Some(ref start) => parse_date_arg(start)?.to_rfc3339(),
+        None => "".to_owned(),
+    };
 
-    loop {
-        buf.clear();
-        f.read_line(&mut buf)?;
+    let mut count = 0;
 
+    if opt.descending {
+        // print in descending order
         if opt.end.is_some() {
-            if let Ordering::Greater = buf.as_bytes().cmp(ed.as_bytes()) {
+            if seek(&mut f, &ed, SeekType::Last)?.is_none() {
+                return Ok(());
+            }
+        } else {
+            f.seek(SeekFrom::End(0))?;
+            seek_start_of_prev_line(&mut f)?;
+        }
+
+        loop {
+            if let Some(n) = opt.num_entries {
+                count += 1;
+                if count > n {
+                    break;
+                }
+            }
+
+            buf.clear();
+            f.read_line(&mut buf)?;
+
+            if opt.start.is_some() {
+                match buf.as_bytes().cmp(sd.as_bytes()) {
+                    Ordering::Equal | Ordering::Less => break,
+                    _ => (),
+                }
+            }
+
+            let mut r = reader_builder.from_reader(buf.as_bytes());
+            if !r.read_record(&mut record)? {
+                break;
+            }
+
+            let entry: Entry = (&record).try_into()?;
+
+            if let Some(ref contains) = opt.contains {
+                if !entry.message().contains(contains) {
+                    continue;
+                }
+            }
+
+            print_entry(&config, &entry)?;
+
+            seek_start_of_prev_line(&mut f)?;
+
+            if seek_start_of_prev_line(&mut f)?.is_none() {
                 break;
             }
         }
-
-        let mut r = reader_builder.from_reader(buf.as_bytes());
-        if !r.read_record(&mut record)? {
-            break;
+    } else {
+        // print in ascending order
+        if seek(&mut f, &sd, SeekType::First)?.is_none() {
+            return Ok(());
         }
 
-        let entry: Entry = (&record).try_into()?;
-
-        if let Some(ref contains) = opt.contains {
-            if !entry.message().contains(contains) {
-                continue;
+        loop {
+            if let Some(n) = opt.num_entries {
+                count += 1;
+                if count > n {
+                    break;
+                }
             }
-        }
 
-        print_entry(&config, &entry)?;
+            buf.clear();
+            f.read_line(&mut buf)?;
+
+            if opt.end.is_some() {
+                match buf.as_bytes().cmp(ed.as_bytes()) {
+                    Ordering::Equal | Ordering::Greater => break,
+                    _ => (),
+                }
+            }
+
+            let mut r = reader_builder.from_reader(buf.as_bytes());
+            if !r.read_record(&mut record)? {
+                break;
+            }
+
+            let entry: Entry = (&record).try_into()?;
+
+            if let Some(ref contains) = opt.contains {
+                if !entry.message().contains(contains) {
+                    continue;
+                }
+            }
+
+            print_entry(&config, &entry)?;
+        }
     }
 
     Ok(())

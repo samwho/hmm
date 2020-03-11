@@ -5,10 +5,10 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom};
 pub enum SeekType {
     // Seek to the first occurrence of a given prefix. If the start of file is
     // reached before finding an exact match, return start of file.
-    First, 
+    First,
     // Seek to the last occurrence of a given prefix. If end of file is reached
     // before finding an exact match, return end of file.
-    Last
+    Last,
 }
 
 // seek_first takes a Seek + Read and a string prefix and will seek to either
@@ -89,7 +89,7 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
                         } else {
                             line_start = new_start.unwrap();
                         }
-                    },
+                    }
                     SeekType::Last => {
                         let new_start = seek_start_of_next_line(f)?;
                         if new_start.is_none() {
@@ -116,7 +116,7 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
     Ok(None)
 }
 
-fn seek_start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
+pub fn seek_start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     let mut buf = [0; 1];
     let mut pos = f.seek(SeekFrom::Current(0))?;
 
@@ -136,7 +136,7 @@ fn seek_start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     }
 }
 
-fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
+pub fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     seek_start_of_current_line(f)?;
 
     let mut buf = [0; 1];
@@ -164,7 +164,6 @@ fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
         }
     }
 }
-
 
 fn seek_start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
     let mut buf = [0; 1];
@@ -291,7 +290,6 @@ mod tests {
     #[test_case("a\nb\nc\nd\ne\nf\ng", "A", SeekType::First => Some(0)  ; "SeekType first: find prefix before first line")]
     #[test_case("a\nb\nb\nb\nb\nb\nc", "b", SeekType::First => Some(2)  ; "SeekType first: make sure we seek to the first occurrence")]
     #[test_case("b\nb\nb\nb\nb\nb\nc", "b", SeekType::First => Some(0)  ; "SeekType first: even if the first occurence is at the start of the file")]
-
     #[test_case("a\nb\nc\nd\ne\nf\ng", "b", SeekType::Last  => Some(2)  ; "SeekType last: find line in middle of file")]
     #[test_case("a\nb\nc\nd\ne\nf\ng", "a", SeekType::Last  => Some(0)  ; "SeekType last: find first line")]
     #[test_case("a\nb\nc\nd\ne\nf\ng", "g", SeekType::Last  => Some(12) ; "SeekType last: find last line")]
