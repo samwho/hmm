@@ -1,4 +1,4 @@
-use hmm::{config::Config, error::Error, Result};
+use hmm::{config::Config, entry::Entry, error::Error, Result};
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufWriter, Read, Write};
@@ -29,8 +29,7 @@ fn app() -> Result<()> {
         msg = compose_entry(&config.editor()?)?;
     }
 
-    write_entry(BufWriter::new(f), msg.trim())?;
-    Ok(())
+    Entry::with_message(&msg).write(BufWriter::new(f))
 }
 
 fn compose_entry(editor: &str) -> Result<String> {
@@ -48,11 +47,4 @@ fn compose_entry(editor: &str) -> Result<String> {
     let mut s = String::new();
     f.read_to_string(&mut s)?;
     Ok(s)
-}
-
-fn write_entry(w: impl Write, msg: &str) -> Result<()> {
-    let now = chrono::Utc::now();
-    let mut writer = csv::Writer::from_writer(w);
-
-    Ok(writer.write_record(&[now.to_rfc3339(), serde_json::to_string(&msg)?])?)
 }
