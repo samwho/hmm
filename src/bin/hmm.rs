@@ -1,5 +1,5 @@
-use hmm::{config::Config, entry::Entry, error::Error, Result};
 use fs2::FileExt;
+use hmm::{config::Config, entry::Entry, error::Error, Result};
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufWriter, Read, Write};
