@@ -1,4 +1,5 @@
 use hmm::{config::Config, entry::Entry, error::Error, Result};
+use fs2::FileExt;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufWriter, Read, Write};
@@ -18,6 +19,10 @@ fn app() -> Result<()> {
     let config = Config::default();
 
     let mut msg = itertools::join(env::args().skip(1), " ");
+    if msg.is_empty() {
+        msg = compose_entry(&config.editor()?)?;
+    }
+
     let f = OpenOptions::new()
         .read(true)
         .write(true)
@@ -25,11 +30,10 @@ fn app() -> Result<()> {
         .create(true)
         .open(config.path()?)?;
 
-    if msg.is_empty() {
-        msg = compose_entry(&config.editor()?)?;
-    }
-
-    Entry::with_message(&msg).write(BufWriter::new(f))
+    f.lock_exclusive()?;
+    let res = Entry::with_message(&msg).write(BufWriter::new(&f));
+    f.unlock()?;
+    res
 }
 
 fn compose_entry(editor: &str) -> Result<String> {
