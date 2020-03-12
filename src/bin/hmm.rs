@@ -101,7 +101,7 @@ mod tests {
     use hmm::{config::Config, entry::Entry, Result};
     use std::convert::TryInto;
     use std::fs::File;
-    use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Cursor};
+    use std::io::{BufRead, BufReader, Cursor, Seek, SeekFrom, Write};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;

@@ -19,24 +19,40 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
 struct Opt {
+    /// Path to your hmm configuration file, defaults to your default
+    /// configuration directory, ~/.config on *nix systems, %APPDATA% on Windows.
     #[structopt(short = "c", long = "config")]
     config: Option<PathBuf>,
 
+    /// By default, entries are printed in ascending chronological order. This
+    /// flag prints in reverse chronological order.
     #[structopt(long = "descending")]
     descending: bool,
 
+    /// Print a random entry. Specifying this flag means the other flags will be
+    /// ignored.
     #[structopt(long = "random")]
     random: bool,
 
+    /// The number of entries to print. If a start and end date have been specified,
+    /// this will print the first N of that range. In ascending order, this is the first
+    /// N entries chronologically, and in descending order it will be the last N entries.
     #[structopt(short = "n")]
     num_entries: Option<usize>,
 
+    /// Date to start printing from, inclusive. The date will be read in your
+    /// local time, and can be specified using any subset of an RFC3339 date,
+    /// e.g. 2012, 2012-01, 2012-01-29, 2012-01-29T14, 2012-01-29T14:30,
+    /// 2012-01-29T14:30:11.
     #[structopt(short = "s", long = "start")]
     start: Option<String>,
 
+    /// Date to stop printing at, exclusive. Like --start, this can be any subset of an
+    /// RFC3339 date. See --start for details.
     #[structopt(short = "e", long = "end")]
     end: Option<String>,
 
+    /// Only print entries that contain this substring exactly.
     #[structopt(long = "contains")]
     contains: Option<String>,
 }
@@ -93,13 +109,6 @@ fn app(opt: Opt) -> Result<()> {
         }
 
         loop {
-            if let Some(n) = opt.num_entries {
-                count += 1;
-                if count > n {
-                    break;
-                }
-            }
-
             buf.clear();
             f.read_line(&mut buf)?;
 
@@ -123,6 +132,13 @@ fn app(opt: Opt) -> Result<()> {
                 }
             }
 
+            if let Some(n) = opt.num_entries {
+                count += 1;
+                if count > n {
+                    break;
+                }
+            }
+
             print_entry(&config, &entry)?;
 
             seek_start_of_prev_line(&mut f)?;
@@ -138,13 +154,6 @@ fn app(opt: Opt) -> Result<()> {
         }
 
         loop {
-            if let Some(n) = opt.num_entries {
-                count += 1;
-                if count > n {
-                    break;
-                }
-            }
-
             buf.clear();
             f.read_line(&mut buf)?;
 
@@ -165,6 +174,13 @@ fn app(opt: Opt) -> Result<()> {
             if let Some(ref contains) = opt.contains {
                 if !entry.message().contains(contains) {
                     continue;
+                }
+            }
+
+            if let Some(n) = opt.num_entries {
+                count += 1;
+                if count > n {
+                    break;
                 }
             }
 
