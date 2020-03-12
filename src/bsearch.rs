@@ -165,7 +165,7 @@ pub fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>>
     }
 }
 
-fn seek_start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
+pub fn seek_start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
     let mut buf = [0; 1];
     let mut pos = f.seek(SeekFrom::Current(0))?;
 

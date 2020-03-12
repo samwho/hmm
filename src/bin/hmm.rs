@@ -1,7 +1,11 @@
+use chrono::Utc;
 use fs2::FileExt;
-use hmm::{config::Config, entry::Entry, error::Error, Result};
+use hmm::{
+    bsearch::seek_start_of_current_line, config::Config, entry::Entry, error::Error, Result,
+};
+use std::convert::TryInto;
 use std::fs::OpenOptions;
-use std::io::{stderr, BufWriter, Read, Write};
+use std::io::{stderr, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::process::{exit, Command};
 use structopt::StructOpt;
@@ -37,7 +41,7 @@ fn app(opt: Opt) -> Result<()> {
         msg = compose_entry(&config.editor()?)?;
     }
 
-    let f = OpenOptions::new()
+    let mut f = OpenOptions::new()
         .read(true)
         .write(true)
         .append(true)
@@ -45,6 +49,14 @@ fn app(opt: Opt) -> Result<()> {
         .open(config.path()?)?;
 
     f.lock_exclusive()?;
+
+    let last_line = read_last_line(&mut f)?;
+    let last_entry: Entry = last_line.as_str().try_into()?;
+
+    if last_entry.datetime() < &Utc::now() {
+        return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
+    }
+
     let res = Entry::with_message(&msg).write(BufWriter::new(&f));
     f.unlock()?;
     res
@@ -65,6 +77,14 @@ fn compose_entry(editor: &str) -> Result<String> {
     let mut s = String::new();
     f.read_to_string(&mut s)?;
     Ok(s)
+}
+
+fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
+    f.seek(SeekFrom::End(0))?;
+    seek_start_of_current_line(f)?;
+    let mut buf = String::new();
+    BufReader::new(f).read_line(&mut buf)?;
+    Ok(buf)
 }
 
 #[cfg(test)]
