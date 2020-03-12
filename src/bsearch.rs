@@ -224,29 +224,26 @@ mod tests {
     use std::io::{BufRead, Cursor, Seek, SeekFrom};
     use test_case::test_case;
 
-    fn str_reader(s: &str) -> Cursor<&[u8]> {
-        Cursor::new(s.as_bytes())
-    }
-
     fn read_line(r: &mut impl BufRead) -> Result<String> {
         let mut buf = String::new();
         r.read_line(&mut buf)?;
         Ok(buf)
     }
 
-    #[test_case("",                       0  => ""         ; "empty file")]
-    #[test_case("line 1\nline 2\nline 3", 0  => "line 1\n" ; "start of first line")]
-    #[test_case("line 1\nline 2\nline 3", 3  => "line 1\n" ; "middle of first line")]
-    #[test_case("line 1\nline 2\nline 3", 6  => "line 1\n" ; "end of first line")]
-    #[test_case("line 1\nline 2\nline 3", 7  => "line 2\n" ; "start of second line")]
-    #[test_case("line 1\nline 2\nline 3", 12 => "line 2\n" ; "middle of second line")]
-    #[test_case("line 1\nline 2\nline 3", 13 => "line 2\n" ; "end of second line")]
-    #[test_case("line 1\nline 2\nline 3", 14 => "line 3"   ; "start of third line")]
-    #[test_case("line 1\nline 2\nline 3", 15 => "line 3"   ; "middle of third line")]
-    #[test_case("line 1\nline 2\nline 3", 19 => "line 3"   ; "end of third line")]
-    #[test_case("line 1\nline 2\nline 3", 26 => "line 3"   ; "past eof")]
+    #[test_case("",                         0  => ""         ; "empty file")]
+    #[test_case("line 1\nline 2\nline 3",   0  => "line 1\n" ; "start of first line")]
+    #[test_case("line 1\nline 2\nline 3",   3  => "line 1\n" ; "middle of first line")]
+    #[test_case("line 1\nline 2\nline 3",   6  => "line 1\n" ; "end of first line")]
+    #[test_case("line 1\nline 2\nline 3",   7  => "line 2\n" ; "start of second line")]
+    #[test_case("line 1\nline 2\nline 3",   12 => "line 2\n" ; "middle of second line")]
+    #[test_case("line 1\nline 2\nline 3",   13 => "line 2\n" ; "end of second line")]
+    #[test_case("line 1\nline 2\nline 3",   14 => "line 3"   ; "start of third line")]
+    #[test_case("line 1\nline 2\nline 3",   15 => "line 3"   ; "middle of third line")]
+    #[test_case("line 1\nline 2\nline 3",   19 => "line 3"   ; "end of third line")]
+    #[test_case("line 1\nline 2\nline 3",   26 => "line 3"   ; "past eof")]
+    #[test_case("line 1\nline 2\nline 3\n", 20 => "line 3\n" ; "last line when line ends with eof")]
     fn test_seek_start_of_current_line(s: &str, pos: u64) -> String {
-        let mut r = str_reader(s);
+        let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
         seek_start_of_current_line(&mut r).unwrap();
         read_line(&mut r).unwrap()
@@ -262,7 +259,7 @@ mod tests {
     #[test_case("line 1\nline 2\nline 3", 16 => None     ; "middle of last line")]
     #[test_case("line 1\nline 2\nline 3", 19 => None     ; "end of last line")]
     fn test_seek_start_of_next_line(s: &str, pos: u64) -> Option<u64> {
-        let mut r = str_reader(s);
+        let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
         seek_start_of_next_line(&mut r).unwrap()
     }
@@ -278,7 +275,7 @@ mod tests {
     #[test_case("line 1\nline 2\nline 3", 16 => Some(7)  ; "middle of last line")]
     #[test_case("line 1\nline 2\nline 3", 19 => Some(7)  ; "end of last line")]
     fn test_seek_start_of_prev_line(s: &str, pos: u64) -> Option<u64> {
-        let mut r = str_reader(s);
+        let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
         seek_start_of_prev_line(&mut r).unwrap()
     }
@@ -298,7 +295,7 @@ mod tests {
     #[test_case("a\nb\nb\nb\nb\nb\nc", "b", SeekType::Last  => Some(10) ; "SeekType last: make sure we seek to the last occurrence")]
     #[test_case("b\nb\nb\nb\nb\nb\nb", "b", SeekType::Last  => Some(12) ; "SeekType last: even if the last occurence is at the start of the file")]
     fn test_seek(s: &str, prefix: &str, seek_type: SeekType) -> Option<u64> {
-        let mut r = str_reader(s);
+        let mut r = Cursor::new(s.as_bytes());
         seek(&mut r, prefix, seek_type).unwrap()
     }
 }

@@ -1,12 +1,13 @@
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use colored::*;
 use hmm::{
-    bsearch::{seek, seek_start_of_prev_line, SeekType},
+    bsearch::{seek, seek_start_of_current_line, seek_start_of_prev_line, SeekType},
     config::Config,
     entry::Entry,
     error::Error,
     Result,
 };
+use rand::distributions::{Distribution, Uniform};
 use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::fs::File;
@@ -55,6 +56,11 @@ fn app(opt: Opt) -> Result<()> {
         .config
         .map(|c| Config::read_from(&c))
         .unwrap_or_else(Config::read)?;
+
+    if opt.random {
+        print_random_entry(&config)?;
+        return Ok(());
+    }
 
     let mut f = BufReader::new(File::open(config.path()?)?);
     let mut record = csv::StringRecord::new();
@@ -167,6 +173,35 @@ fn app(opt: Opt) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_random_entry(config: &Config) -> Result<()> {
+    let mut f = File::open(config.path()?)?;
+
+    let mut reader_builder = csv::ReaderBuilder::new();
+    reader_builder.has_headers(false);
+
+    let mut rng = rand::thread_rng();
+    let range = Uniform::new(0, f.metadata()?.len());
+    f.seek(SeekFrom::Start(range.sample(&mut rng)))?;
+    seek_start_of_current_line(&mut f)?;
+
+    let mut buf = String::new();
+    let mut br = BufReader::new(f);
+    br.read_line(&mut buf)?;
+
+    let mut r = reader_builder.from_reader(buf.as_bytes());
+    let mut record = csv::StringRecord::new();
+    if !r.read_record(&mut record)? {
+        return Err(Error::StringError(format!(
+            "failed to parse \"{}\" as CSV row",
+            buf
+        )));
+    }
+
+    let entry: Entry = (&record).try_into()?;
+
+    print_entry(config, &entry)
 }
 
 fn print_entry(config: &Config, entry: &Entry) -> Result<()> {

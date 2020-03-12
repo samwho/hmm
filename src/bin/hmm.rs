@@ -52,12 +52,15 @@ fn app(opt: Opt) -> Result<()> {
 
     let meta = f.metadata();
     if meta.is_ok() && meta.unwrap().len() > 0 {
+        let return_pos = f.seek(SeekFrom::Current(0))?;
         let last_line = read_last_line(&mut f)?;
         let last_entry: Entry = last_line.as_str().try_into()?;
 
-        if last_entry.datetime() < &Utc::now() {
+        if last_entry.datetime() > &Utc::now() {
             return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
         }
+
+        f.seek(SeekFrom::Start(return_pos))?;
     }
 
     let res = Entry::with_message(&msg).write(BufWriter::new(&f));
@@ -83,7 +86,7 @@ fn compose_entry(editor: &str) -> Result<String> {
 }
 
 fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
-    f.seek(SeekFrom::End(0))?;
+    f.seek(SeekFrom::End(-1))?;
     seek_start_of_current_line(f)?;
     let mut buf = String::new();
     BufReader::new(f).read_line(&mut buf)?;
@@ -92,12 +95,13 @@ fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use assert_cmd::{assert::Assert, Command};
     use chrono::{DateTime, Utc};
     use hmm::{config::Config, entry::Entry, Result};
     use std::convert::TryInto;
     use std::fs::File;
-    use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+    use std::io::{BufRead, BufReader, Seek, SeekFrom, Write, Cursor};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
@@ -178,5 +182,11 @@ mod tests {
         }
 
         messages
+    }
+
+    #[test_case("line 1\nline 2\nline 3\n" => "line 3\n" ; "line ending in new line")]
+    fn test_read_last_line(s: &str) -> String {
+        let mut r = Cursor::new(s.as_bytes());
+        read_last_line(&mut r).unwrap()
     }
 }
