@@ -66,7 +66,10 @@ impl TryFrom<&str> for Entry {
 
         let mut r = reader_builder.from_reader(s.as_bytes());
         if !r.read_record(&mut record)? {
-            return Err(Error::StringError("error parsing CSV row".to_owned()));
+            return Err(Error::StringError(format!(
+                "error parsing \"{}\" as a CSV row",
+                s
+            )));
         }
 
         (&record).try_into()

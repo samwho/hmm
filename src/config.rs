@@ -3,28 +3,54 @@ use super::Result;
 use serde::{Deserialize, Serialize};
 use std::default::Default;
 use std::env;
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
-    path: Option<PathBuf>,
-    date_format: Option<String>,
-    editor: Option<String>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        confy::load("hmm").unwrap()
-    }
+    pub path: Option<PathBuf>,
+    pub date_format: Option<String>,
+    pub editor: Option<String>,
 }
 
 impl Config {
+    pub fn read() -> Result<Config> {
+        let path = directories::ProjectDirs::from("sh", "hmm", "hmm")
+            .unwrap()
+            .config_dir()
+            .join("config.toml");
+        Self::read_from(&path)
+    }
+
+    pub fn read_from(path: &PathBuf) -> Result<Config> {
+        if !path.exists() {
+            return Ok(Config {
+                ..Default::default()
+            });
+        }
+
+        let mut s = String::new();
+        File::open(path)?.read_to_string(&mut s)?;
+        let config: Config = toml::from_str(&s)?;
+        Ok(config)
+    }
+
     pub fn path(&self) -> Result<PathBuf> {
         let p = match &self.path {
             Some(ref path) => path.to_owned(),
             None => {
                 let dirs = directories::UserDirs::new().unwrap();
-                dirs.home_dir().to_path_buf()
+                let path = dirs.home_dir().to_path_buf().join(".hmm");
+
+                if path.is_dir() {
+                    return Err(Error::StringError(format!(
+                        "\"{}\" is a directory and can't be used as the file hmm writes to",
+                        path.to_string_lossy()
+                    )));
+                }
+
+                path
             }
         };
         Ok(p)
@@ -36,7 +62,7 @@ impl Config {
         } else if let Ok(editor) = env::var("EDITOR") {
             Ok(editor)
         } else {
-            Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", path().to_str().unwrap())))
+            Err(Error::StringError(format!("unable to find an editor, set your EDITOR environment variable or add a line like `editor = \"nano\"` to your config at {}", self.path()?.to_str().unwrap())))
         }
     }
 
@@ -47,15 +73,4 @@ impl Config {
             "%Y-%m-%d %H:%M".to_owned()
         }
     }
-}
-
-pub fn get() -> Result<Config> {
-    Ok(confy::load("hmm")?)
-}
-
-pub fn path() -> PathBuf {
-    directories::ProjectDirs::from("rs", "hmm", "hmm")
-        .unwrap()
-        .config_dir()
-        .join("hmm.toml")
 }

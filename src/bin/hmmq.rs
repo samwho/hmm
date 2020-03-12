@@ -11,12 +11,16 @@ use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Seek, SeekFrom, Write};
+use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
 struct Opt {
+    #[structopt(short = "c", long = "config")]
+    config: Option<PathBuf>,
+
     #[structopt(long = "descending")]
     descending: bool,
 
@@ -29,7 +33,7 @@ struct Opt {
     #[structopt(short = "e", long = "end")]
     end: Option<String>,
 
-    #[structopt(short = "c", long = "contains")]
+    #[structopt(long = "contains")]
     contains: Option<String>,
 }
 
@@ -44,7 +48,10 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let config = Config::default();
+    let config = opt
+        .config
+        .map(|c| Config::read_from(&c))
+        .unwrap_or_else(Config::read)?;
 
     let mut f = BufReader::new(File::open(config.path()?)?);
     let mut record = csv::StringRecord::new();
