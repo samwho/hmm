@@ -50,11 +50,14 @@ fn app(opt: Opt) -> Result<()> {
 
     f.lock_exclusive()?;
 
-    let last_line = read_last_line(&mut f)?;
-    let last_entry: Entry = last_line.as_str().try_into()?;
+    let meta = f.metadata();
+    if meta.is_ok() && meta.unwrap().len() > 0 {
+        let last_line = read_last_line(&mut f)?;
+        let last_entry: Entry = last_line.as_str().try_into()?;
 
-    if last_entry.datetime() < &Utc::now() {
-        return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
+        if last_entry.datetime() < &Utc::now() {
+            return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
+        }
     }
 
     let res = Entry::with_message(&msg).write(BufWriter::new(&f));

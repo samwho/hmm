@@ -24,6 +24,9 @@ struct Opt {
     #[structopt(long = "descending")]
     descending: bool,
 
+    #[structopt(long = "random")]
+    random: bool,
+
     #[structopt(short = "n")]
     num_entries: Option<usize>,
 
