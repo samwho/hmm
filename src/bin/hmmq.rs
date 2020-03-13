@@ -1,5 +1,4 @@
-use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
-use colored::*;
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use hmm::{
     bsearch::{seek, seek_start_of_current_line, seek_start_of_prev_line, SeekType},
     config::Config,
@@ -25,8 +24,14 @@ struct Opt {
     #[structopt(short = "c", long = "config")]
     config: Option<PathBuf>,
 
-    #[structopt(long = "format")]
-    format: Option<String>,
+    /// How to format entry output. hmm uses Handlebars as a template format, see
+    /// https://handlebarsjs.com/guide/ for information on how to use them. The values
+    /// "datetime" and "message" are passed in.
+    #[structopt(
+        long = "format",
+        default_value = "{{ color \"blue\" (strftime datetime \"%Y-%m-%d %H:%M:%S\") }}\n{{ indent message }}\n"
+    )]
+    format: String,
 
     /// By default, entries are printed in ascending chronological order. This
     /// flag prints in reverse chronological order.
@@ -77,10 +82,10 @@ fn app(opt: Opt) -> Result<()> {
         .map(|c| Config::read_from(&c))
         .unwrap_or_else(Config::read)?;
 
-    let formatter = Format::with_template(&opt.format.unwrap_or_default())?;
+    let formatter = Format::with_template(&opt.format)?;
 
     if opt.random {
-        print_random_entry(&config)?;
+        print_random_entry(&config, &formatter)?;
         return Ok(());
     }
 
@@ -145,7 +150,7 @@ fn app(opt: Opt) -> Result<()> {
                 }
             }
 
-            print_entry(&config, &entry)?;
+            println!("{}", formatter.format_entry(&entry)?);
 
             seek_start_of_prev_line(&mut f)?;
 
@@ -191,14 +196,13 @@ fn app(opt: Opt) -> Result<()> {
             }
 
             println!("{}", formatter.format_entry(&entry)?);
-            // print_entry(&config, &entry)?;
         }
     }
 
     Ok(())
 }
 
-fn print_random_entry(config: &Config) -> Result<()> {
+fn print_random_entry(config: &Config, formatter: &Format) -> Result<()> {
     let mut f = File::open(config.path()?)?;
 
     let mut reader_builder = csv::ReaderBuilder::new();
@@ -223,25 +227,7 @@ fn print_random_entry(config: &Config) -> Result<()> {
     }
 
     let entry: Entry = (&record).try_into()?;
-
-    print_entry(config, &entry)
-}
-
-fn print_entry(config: &Config, entry: &Entry) -> Result<()> {
-    let wrapper = textwrap::Wrapper::with_termwidth()
-        .initial_indent("| ")
-        .subsequent_indent("| ");
-
-    println!(
-        "{}",
-        entry
-            .datetime()
-            .with_timezone(&Local)
-            .format(&config.date_format())
-            .to_string()
-            .blue()
-    );
-    println!("{}\n", wrapper.fill(entry.message()));
+    println!("{}", formatter.format_entry(&entry)?);
     Ok(())
 }
 
