@@ -108,12 +108,12 @@ fn app(opt: Opt) -> Result<()> {
     if opt.descending {
         // print in descending order
         if opt.end.is_some() {
-            if seek(&mut f, &ed, SeekType::Last)?.is_none() {
+            if seek(&mut f, &ed, SeekType::LastLessThan)?.is_none() {
                 return Ok(());
             }
         } else {
-            f.seek(SeekFrom::End(0))?;
-            seek_start_of_prev_line(&mut f)?;
+            f.seek(SeekFrom::End(-1))?;
+            seek_start_of_current_line(&mut f)?;
         }
 
         loop {
@@ -150,14 +150,13 @@ fn app(opt: Opt) -> Result<()> {
             println!("{}", formatter.format_entry(&entry)?);
 
             seek_start_of_prev_line(&mut f)?;
-
             if seek_start_of_prev_line(&mut f)?.is_none() {
                 break;
             }
         }
     } else {
         // print in ascending order
-        if seek(&mut f, &sd, SeekType::First)?.is_none() {
+        if seek(&mut f, &sd, SeekType::FirstGreaterThan)?.is_none() {
             return Ok(());
         }
 
@@ -299,9 +298,13 @@ mod tests {
 2020-03-12T00:00:00.000000000+00:00,\"\"\"3\"\"\"
 2020-04-12T23:28:45.726598931+00:00,\"\"\"4\"\"\"
 2020-05-12T23:28:48.495151445+00:00,\"\"\"5\"\"\"
-2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"";
+2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"
+";
 
     #[test_case(vec!["-n", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n" ; "get first line")]
+    #[test_case(vec!["-n", "2", "--format", "{{ message }}"] => "1\n2\n" ; "get first two lines")]
+    #[test_case(vec!["-n", "2", "--descending", "--format", "{{ message }}"] => "6\n5\n" ; "get last two lines")]
+    #[test_case(vec!["-n", "2", "--descending", "--end", "2020-05-12T23:28:49", "--format", "{{ message }}"] => "5\n4\n" ; "get second to last two lines")]
     fn test_hmmq(args: Vec<&str>) -> String {
         let path = new_tempfile(TESTDATA);
 
