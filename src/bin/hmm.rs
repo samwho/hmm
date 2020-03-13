@@ -109,10 +109,10 @@ mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
     use chrono::{DateTime, Utc};
-    use hmm::{entry::Entry, Result};
+    use hmm::{entry::Entry};
     use std::convert::TryInto;
     use std::fs::File;
-    use std::io::{BufRead, BufReader, Cursor, Seek, SeekFrom, Write};
+    use std::io::{BufRead, BufReader, Cursor};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
@@ -120,7 +120,7 @@ mod tests {
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
         Command::cargo_bin("hmm")
             .unwrap()
-            .arg("--oath")
+            .arg("--path")
             .arg(path.as_os_str())
             .args(args)
             .assert()
@@ -152,13 +152,9 @@ mod tests {
     #[test_case(vec!["1", "2", "3"]      => vec!["1", "2", "3"]      ; "three invocations")]
     #[test_case(vec!["1", "2", "3", "4"] => vec!["1", "2", "3", "4"] ; "four invocations")]
     fn test_hmm_multiple_invocations(messages: Vec<&str>) -> Vec<String> {
-        let config = Config {
-            path: Some(new_tempfile_path()),
-            ..Default::default()
-        };
-
+        let path = new_tempfile_path();
         for message in &messages {
-            let assert = run_with_config(&config, vec![message]);
+            let assert = run_with_path(&path, vec![message]);
             assert.success();
         }
 
@@ -169,7 +165,7 @@ mod tests {
             .into();
 
         let mut messages: Vec<String> = Vec::with_capacity(messages.len());
-        let r = BufReader::new(File::open(config.path().unwrap()).unwrap());
+        let r = BufReader::new(File::open(&path).unwrap());
         for line in r.lines() {
             let entry: Entry = line.unwrap().as_str().try_into().unwrap();
             messages.push(entry.message().to_owned());
