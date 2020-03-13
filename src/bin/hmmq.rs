@@ -77,7 +77,9 @@ fn main() {
 
 fn app(opt: Opt) -> Result<()> {
     let formatter = Format::with_template(&opt.format)?;
-    let path = opt.path.unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
+    let path = opt
+        .path
+        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
     if opt.random {
         print_random_entry(&path, &formatter)?;
@@ -262,7 +264,25 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use assert_cmd::{assert::Assert, Command};
+    use std::path::PathBuf;
+    use tempfile::NamedTempFile;
     use test_case::test_case;
+
+    fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
+        Command::cargo_bin("hmmq")
+            .unwrap()
+            .arg("--path")
+            .arg(path.as_os_str())
+            .args(args)
+            .assert()
+    }
+
+    fn new_tempfile(content: &str) -> PathBuf {
+        let mut f = NamedTempFile::new().unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+        f.keep().unwrap().1
+    }
 
     #[test_case("2012"                => "2012-01-01T00:00:00+00:00" ; "y")]
     #[test_case("2012-02"             => "2012-02-01T00:00:00+00:00" ; "ym")]
@@ -272,5 +292,20 @@ mod tests {
     #[test_case("2012-02-02T02:02:02" => "2012-02-02T02:02:02+00:00" ; "ymdhms")]
     fn test_parse_date_arg(s: &str) -> String {
         parse_date_arg(s).unwrap().to_rfc3339()
+    }
+
+    const TESTDATA: &str = "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"
+2020-02-12T23:08:40.987613062+00:00,\"\"\"2\"\"\"
+2020-03-12T00:00:00.000000000+00:00,\"\"\"3\"\"\"
+2020-04-12T23:28:45.726598931+00:00,\"\"\"4\"\"\"
+2020-05-12T23:28:48.495151445+00:00,\"\"\"5\"\"\"
+2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"";
+
+    #[test_case(vec!["-n", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n" ; "get first line")]
+    fn test_hmmq(args: Vec<&str>) -> String {
+        let path = new_tempfile(TESTDATA);
+
+        let assert = run_with_path(&path, args);
+        String::from_utf8(assert.get_output().stdout.clone()).unwrap()
     }
 }

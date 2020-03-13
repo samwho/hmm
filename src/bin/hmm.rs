@@ -1,8 +1,6 @@
 use chrono::Utc;
 use fs2::FileExt;
-use hmm::{
-    bsearch::seek_start_of_current_line, entry::Entry, error::Error, Result,
-};
+use hmm::{bsearch::seek_start_of_current_line, entry::Entry, error::Error, Result};
 use std::convert::TryInto;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
@@ -41,7 +39,9 @@ fn app(opt: Opt) -> Result<()> {
         msg = compose_entry(&editor()?)?;
     }
 
-    let path = opt.path.unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
+    let path = opt
+        .path
+        .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
     let mut f = OpenOptions::new()
         .read(true)
@@ -87,12 +87,13 @@ fn compose_entry(editor: &str) -> Result<String> {
     Ok(s)
 }
 
-
 fn editor() -> Result<String> {
     if let Ok(editor) = std::env::var("EDITOR") {
         Ok(editor)
     } else {
-        Err(Error::StringError("unable to find an editor, set your EDITOR environment variable".to_owned()))
+        Err(Error::StringError(
+            "unable to find an editor, set your EDITOR environment variable".to_owned(),
+        ))
     }
 }
 
@@ -109,7 +110,7 @@ mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
     use chrono::{DateTime, Utc};
-    use hmm::{entry::Entry};
+    use hmm::entry::Entry;
     use std::convert::TryInto;
     use std::fs::File;
     use std::io::{BufRead, BufReader, Cursor};
