@@ -1,7 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use hmm::{
     bsearch::{seek, seek_start_of_current_line, seek_start_of_prev_line, SeekType},
-    config::Config,
     entry::Entry,
     error::Error,
     format::Format,
@@ -19,10 +18,10 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmmq", about = "Query your hmm file")]
 struct Opt {
-    /// Path to your hmm configuration file, defaults to your default
-    /// configuration directory, ~/.config on *nix systems, %APPDATA% on Windows.
-    #[structopt(short = "c", long = "config")]
-    config: Option<PathBuf>,
+    /// Path to your hmm file, defaults to your default configuration directory,
+    /// ~/.config on *nix systems, %APPDATA% on Windows.
+    #[structopt(long = "path")]
+    path: Option<PathBuf>,
 
     /// How to format entry output. hmm uses Handlebars as a template format, see
     /// https://handlebarsjs.com/guide/ for information on how to use them. The values
@@ -77,19 +76,15 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let config = opt
-        .config
-        .map(|c| Config::read_from(&c))
-        .unwrap_or_else(Config::read)?;
-
     let formatter = Format::with_template(&opt.format)?;
+    let path = opt.path.unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
     if opt.random {
-        print_random_entry(&config, &formatter)?;
+        print_random_entry(&path, &formatter)?;
         return Ok(());
     }
 
-    let mut f = BufReader::new(File::open(config.path()?)?);
+    let mut f = BufReader::new(File::open(&path)?);
     let mut record = csv::StringRecord::new();
     let mut buf = String::new();
 
@@ -202,8 +197,8 @@ fn app(opt: Opt) -> Result<()> {
     Ok(())
 }
 
-fn print_random_entry(config: &Config, formatter: &Format) -> Result<()> {
-    let mut f = File::open(config.path()?)?;
+fn print_random_entry(path: &PathBuf, formatter: &Format) -> Result<()> {
+    let mut f = File::open(path)?;
 
     let mut reader_builder = csv::ReaderBuilder::new();
     reader_builder.has_headers(false);

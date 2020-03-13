@@ -1,5 +1,4 @@
 pub mod bsearch;
-pub mod config;
 pub mod entry;
 pub mod error;
 pub mod format;

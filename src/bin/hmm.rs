@@ -1,7 +1,7 @@
 use chrono::Utc;
 use fs2::FileExt;
 use hmm::{
-    bsearch::seek_start_of_current_line, config::Config, entry::Entry, error::Error, Result,
+    bsearch::seek_start_of_current_line, entry::Entry, error::Error, Result,
 };
 use std::convert::TryInto;
 use std::fs::OpenOptions;
@@ -14,10 +14,10 @@ use tempfile::NamedTempFile;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmm", about = "Command line note taking")]
 struct Opt {
-    /// Path to your hmm configuration file, defaults to your default
-    /// configuration directory, ~/.config on *nix systems, %APPDATA% on Windows.
-    #[structopt(short = "c", long = "config")]
-    config: Option<PathBuf>,
+    /// Path to your hmm file, defaults to your default configuration directory,
+    /// ~/.config on *nix systems, %APPDATA% on Windows.
+    #[structopt(long = "path")]
+    path: Option<PathBuf>,
 
     /// Message to add to your hmm journal. Feel free to use quotes or not, but
     /// be wary of how your shell interprets strings. For example, # is often the
@@ -36,22 +36,19 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let config = opt
-        .config
-        .map(|c| Config::read_from(&c))
-        .unwrap_or_else(Config::read)?;
-
     let mut msg = itertools::join(opt.message, " ");
     if msg.is_empty() {
-        msg = compose_entry(&config.editor()?)?;
+        msg = compose_entry(&editor()?)?;
     }
+
+    let path = opt.path.unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
     let mut f = OpenOptions::new()
         .read(true)
         .write(true)
         .append(true)
         .create(true)
-        .open(config.path()?)?;
+        .open(path)?;
 
     f.lock_exclusive()?;
 
@@ -90,6 +87,15 @@ fn compose_entry(editor: &str) -> Result<String> {
     Ok(s)
 }
 
+
+fn editor() -> Result<String> {
+    if let Ok(editor) = std::env::var("EDITOR") {
+        Ok(editor)
+    } else {
+        Err(Error::StringError("unable to find an editor, set your EDITOR environment variable".to_owned()))
+    }
+}
+
 fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
     f.seek(SeekFrom::End(-1))?;
     seek_start_of_current_line(f)?;
@@ -103,7 +109,7 @@ mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
     use chrono::{DateTime, Utc};
-    use hmm::{config::Config, entry::Entry, Result};
+    use hmm::{entry::Entry, Result};
     use std::convert::TryInto;
     use std::fs::File;
     use std::io::{BufRead, BufReader, Cursor, Seek, SeekFrom, Write};
@@ -111,21 +117,11 @@ mod tests {
     use tempfile::NamedTempFile;
     use test_case::test_case;
 
-    fn mkconfig(config: &Config) -> Result<NamedTempFile> {
-        let mut f = NamedTempFile::new()?;
-        let t = toml::to_string(config)?;
-        f.write_all(t.as_bytes())?;
-        f.flush()?;
-        f.seek(SeekFrom::Start(0))?;
-        Ok(f)
-    }
-
-    fn run_with_config(config: &Config, args: Vec<&str>) -> Assert {
-        let config_path = mkconfig(&config).unwrap();
+    fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
         Command::cargo_bin("hmm")
             .unwrap()
-            .arg("--config")
-            .arg(config_path.path())
+            .arg("--oath")
+            .arg(path.as_os_str())
             .args(args)
             .assert()
     }
@@ -139,16 +135,12 @@ mod tests {
     #[test_case(vec!["hello\nworld"]     => "hello\nworld"  ; "single argument, multiple line entry")]
     #[test_case(vec!["hello\n", "world"] => "hello\n world" ; "multiple argument, multiple line entry")]
     fn test_hmm_single_invocation(args: Vec<&str>) -> String {
-        let config = Config {
-            path: Some(new_tempfile_path()),
-            ..Default::default()
-        };
-
-        let assert = run_with_config(&config, args);
+        let path = new_tempfile_path();
+        let assert = run_with_path(&path, args);
         assert.success();
 
         let mut buf = String::new();
-        BufReader::new(File::open(config.path().unwrap()).unwrap())
+        BufReader::new(File::open(&path).unwrap())
             .read_line(&mut buf)
             .unwrap();
 
