@@ -29,12 +29,20 @@ impl Entry {
         self.message.contains(s)
     }
 
-    pub fn write(&self, w: impl Write) -> Result<()> {
-        let mut writer = csv::Writer::from_writer(w);
-        Ok(writer.write_record(&[
-            self.datetime.to_rfc3339(),
-            serde_json::to_string(&self.message)?,
-        ])?)
+    pub fn write(&self, mut w: impl Write) -> Result<()> {
+        Ok(w.write_all(self.to_csv_row()?.as_bytes())?)
+    }
+
+    pub fn to_csv_row(&self) -> Result<String> {
+        let mut buf = Vec::new();
+        {
+            let mut writer = csv::Writer::from_writer(&mut buf);
+            writer.write_record(&[
+                self.datetime.to_rfc3339(),
+                serde_json::to_string(&self.message)?,
+            ])?;
+        }
+        Ok(String::from_utf8(buf)?)
     }
 }
 

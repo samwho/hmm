@@ -8,6 +8,10 @@ pub enum Error {
     SerdeJson(serde_json::error::Error),
     TomlDeserialize(toml::de::Error),
     TomlSerialize(toml::ser::Error),
+    TemplateError(handlebars::TemplateError),
+    TemplateRenderError(handlebars::TemplateRenderError),
+    RenderError(handlebars::RenderError),
+    Utf8(std::string::FromUtf8Error),
     StringError(String),
 }
 
@@ -20,6 +24,10 @@ impl error::Error for Error {
             Error::SerdeJson(ref err) => Some(err),
             Error::TomlDeserialize(ref err) => Some(err),
             Error::TomlSerialize(ref err) => Some(err),
+            Error::TemplateError(ref err) => Some(err),
+            Error::TemplateRenderError(ref err) => Some(err),
+            Error::RenderError(ref err) => Some(err),
+            Error::Utf8(ref err) => Some(err),
             Error::StringError(_) => None,
         }
     }
@@ -34,8 +42,36 @@ impl fmt::Display for Error {
             Error::SerdeJson(ref err) => err.fmt(f),
             Error::TomlDeserialize(ref err) => err.fmt(f),
             Error::TomlSerialize(ref err) => err.fmt(f),
+            Error::TemplateError(ref err) => err.fmt(f),
+            Error::TemplateRenderError(ref err) => err.fmt(f),
+            Error::RenderError(ref err) => err.fmt(f),
+            Error::Utf8(ref err) => err.fmt(f),
             Error::StringError(ref s) => f.write_str(s),
         }
+    }
+}
+
+impl From<std::string::FromUtf8Error> for Error {
+    fn from(err: std::string::FromUtf8Error) -> Error {
+        Error::Utf8(err)
+    }
+}
+
+impl From<handlebars::RenderError> for Error {
+    fn from(err: handlebars::RenderError) -> Error {
+        Error::RenderError(err)
+    }
+}
+
+impl From<handlebars::TemplateRenderError> for Error {
+    fn from(err: handlebars::TemplateRenderError) -> Error {
+        Error::TemplateRenderError(err)
+    }
+}
+
+impl From<handlebars::TemplateError> for Error {
+    fn from(err: handlebars::TemplateError) -> Error {
+        Error::TemplateError(err)
     }
 }
 

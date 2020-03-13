@@ -21,6 +21,7 @@ structopt = { version = "0.3", default-features = false }
 fs2 = "0.4.3"
 toml = "0.5"
 rand = "0.7.3"
+handlebars = "3.0.1"
 
 [dev-dependencies]
 test-case = "1.0.0"

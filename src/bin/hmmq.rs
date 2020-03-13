@@ -5,6 +5,7 @@ use hmm::{
     config::Config,
     entry::Entry,
     error::Error,
+    format::Format,
     Result,
 };
 use rand::distributions::{Distribution, Uniform};
@@ -23,6 +24,9 @@ struct Opt {
     /// configuration directory, ~/.config on *nix systems, %APPDATA% on Windows.
     #[structopt(short = "c", long = "config")]
     config: Option<PathBuf>,
+
+    #[structopt(long = "format")]
+    format: Option<String>,
 
     /// By default, entries are printed in ascending chronological order. This
     /// flag prints in reverse chronological order.
@@ -72,6 +76,8 @@ fn app(opt: Opt) -> Result<()> {
         .config
         .map(|c| Config::read_from(&c))
         .unwrap_or_else(Config::read)?;
+
+    let formatter = Format::with_template(&opt.format.unwrap_or_default())?;
 
     if opt.random {
         print_random_entry(&config)?;
@@ -184,7 +190,8 @@ fn app(opt: Opt) -> Result<()> {
                 }
             }
 
-            print_entry(&config, &entry)?;
+            println!("{}", formatter.format_entry(&entry)?);
+            // print_entry(&config, &entry)?;
         }
     }
 
