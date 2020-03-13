@@ -14,10 +14,15 @@ use tempfile::NamedTempFile;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "hmm", about = "Command line note taking")]
 struct Opt {
+    /// Path to your hmm configuration file, defaults to your default
+    /// configuration directory, ~/.config on *nix systems, %APPDATA% on Windows.
     #[structopt(short = "c", long = "config")]
     config: Option<PathBuf>,
 
-    rest: Vec<String>,
+    /// Message to add to your hmm journal. Feel free to use quotes or not, but
+    /// be wary of how your shell interprets strings. For example, # is often the
+    /// beginning of a comment, so anything after it is likely to be ignored.
+    message: Vec<String>,
 }
 
 fn main() {
@@ -36,7 +41,7 @@ fn app(opt: Opt) -> Result<()> {
         .map(|c| Config::read_from(&c))
         .unwrap_or_else(Config::read)?;
 
-    let mut msg = itertools::join(opt.rest, " ");
+    let mut msg = itertools::join(opt.message, " ");
     if msg.is_empty() {
         msg = compose_entry(&config.editor()?)?;
     }
