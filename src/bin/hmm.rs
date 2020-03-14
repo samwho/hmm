@@ -1,6 +1,6 @@
-use chrono::Utc;
+use chrono::prelude::*;
 use fs2::FileExt;
-use hmm::{bsearch::seek_start_of_current_line, entry::Entry, error::Error, Result};
+use hmm::{seek, entry::Entry, error::Error, Result};
 use std::convert::TryInto;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
@@ -99,7 +99,7 @@ fn editor() -> Result<String> {
 
 fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
     f.seek(SeekFrom::End(-1))?;
-    seek_start_of_current_line(f)?;
+    seek::start_of_current_line(f)?;
     let mut buf = String::new();
     BufReader::new(f).read_line(&mut buf)?;
     Ok(buf)
@@ -109,7 +109,6 @@ fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
-    use chrono::{DateTime, Utc};
     use hmm::entry::Entry;
     use std::convert::TryInto;
     use std::fs::File;
@@ -161,9 +160,7 @@ mod tests {
 
         // Start with the earliest possible date, as we're going to compare the dates we find
         // in the resulting file with this value to make sure they always increase.
-        let mut date: DateTime<Utc> = DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00")
-            .unwrap()
-            .into();
+        let mut date: DateTime<FixedOffset> = DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00").unwrap();
 
         let mut messages: Vec<String> = Vec::with_capacity(messages.len());
         let r = BufReader::new(File::open(&path).unwrap());

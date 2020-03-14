@@ -1,23 +1,23 @@
 use super::{error::Error, Result};
-use chrono::{DateTime, Utc};
+use chrono::prelude::*;
 use csv::StringRecord;
 use std::convert::{TryFrom, TryInto};
 use std::io::Write;
 
 pub struct Entry {
-    datetime: DateTime<Utc>,
+    datetime: DateTime<FixedOffset>,
     message: String,
 }
 
 impl Entry {
     pub fn with_message(message: &str) -> Self {
         Entry {
-            datetime: Utc::now(),
+            datetime: Utc::now().into(),
             message: message.trim().to_owned(),
         }
     }
 
-    pub fn datetime(&self) -> &DateTime<Utc> {
+    pub fn datetime(&self) -> &DateTime<FixedOffset> {
         &self.datetime
     }
 
@@ -91,7 +91,7 @@ mod tests {
 
     #[test_case("2012-01-01T00:00:00+00:00,\"\"\"hello world\"\"\""   => ("2012-01-01T00:00:00+00:00".to_owned(), "hello world".to_owned()) ; "basic entry")]
     #[test_case("2012-01-01T00:00:00+00:00,\"\"\"hello\\nworld\"\"\"" => ("2012-01-01T00:00:00+00:00".to_owned(), "hello\nworld".to_owned()) ; "entry with newline")]
-    #[test_case("2012-01-01T01:00:00+01:00,\"\"\"hello world\"\"\""   => ("2012-01-01T00:00:00+00:00".to_owned(), "hello world".to_owned()) ; "entry with non-UTC timezone")]
+    #[test_case("2012-01-01T01:00:00+01:00,\"\"\"hello world\"\"\""   => ("2012-01-01T01:00:00+01:00".to_owned(), "hello world".to_owned()) ; "entry with non-UTC timezone")]
     #[test_case("2012-01-01T00:00:00+00:00,\"\"\"\"\"\""              => ("2012-01-01T00:00:00+00:00".to_owned(), "".to_owned()) ; "empty entry")]
     fn test_from_str(s: &str) -> (String, String) {
         let entry: Entry = s.try_into().unwrap();

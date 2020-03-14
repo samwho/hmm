@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use hmm::{
-    bsearch::{seek, seek_start_of_current_line, seek_start_of_prev_line, SeekType},
+    seek,
     entry::Entry,
     error::Error,
     format::Format,
@@ -108,12 +108,12 @@ fn app(opt: Opt) -> Result<()> {
     if opt.descending {
         // print in descending order
         if opt.end.is_some() {
-            if seek(&mut f, &ed, SeekType::LastLessThan)?.is_none() {
+            if seek::seek(&mut f, &ed, seek::Type::LastLessThan)?.is_none() {
                 return Ok(());
             }
         } else {
             f.seek(SeekFrom::End(-1))?;
-            seek_start_of_current_line(&mut f)?;
+            seek::start_of_current_line(&mut f)?;
         }
 
         loop {
@@ -149,14 +149,14 @@ fn app(opt: Opt) -> Result<()> {
 
             println!("{}", formatter.format_entry(&entry)?);
 
-            seek_start_of_prev_line(&mut f)?;
-            if seek_start_of_prev_line(&mut f)?.is_none() {
+            seek::start_of_prev_line(&mut f)?;
+            if seek::start_of_prev_line(&mut f)?.is_none() {
                 break;
             }
         }
     } else {
         // print in ascending order
-        if seek(&mut f, &sd, SeekType::FirstGreaterThan)?.is_none() {
+        if seek::seek(&mut f, &sd, seek::Type::FirstGreaterThan)?.is_none() {
             return Ok(());
         }
 
@@ -207,7 +207,7 @@ fn print_random_entry(path: &PathBuf, formatter: &Format) -> Result<()> {
     let mut rng = rand::thread_rng();
     let range = Uniform::new(0, f.metadata()?.len());
     f.seek(SeekFrom::Start(range.sample(&mut rng)))?;
-    seek_start_of_current_line(&mut f)?;
+    seek::start_of_current_line(&mut f)?;
 
     let mut buf = String::new();
     let mut br = BufReader::new(f);

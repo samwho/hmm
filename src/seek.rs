@@ -2,12 +2,12 @@ use super::Result;
 use std::cmp::Ordering;
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
-pub enum SeekType {
-    // Seek to the first occurrence of a given prefix. If the start of file is
-    // reached before finding an exact match, return start of file.
+pub enum Type {
+    // Seek to the first line that is greater than a given prefix. If no
+    // lines are greater than the prefix, None is returned.
     FirstGreaterThan,
-    // Seek to the last occurrence of a given prefix. If end of file is reached
-    // before finding an exact match, return end of file.
+    // Seek to the last line that is less than a given prefix. If no lines
+    // are less than the prefix, None is returned.
     LastLessThan,
 }
 
@@ -20,7 +20,7 @@ pub enum SeekType {
 // return Ok(None).assert_eq! If it gets to the start of the file, it will
 // return Ok(0) as the rest of the file is lexicographically later than the
 // given prefix.
-pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Result<Option<u64>> {
+pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: Type) -> Result<Option<u64>> {
     let mut end = f.seek(SeekFrom::End(0))?;
     let file_size = end;
     let mut start = f.seek(SeekFrom::Start(0))?;
@@ -35,7 +35,7 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
         let cur = start + (end - start) / 2;
 
         f.seek(SeekFrom::Start(cur))?;
-        let mut line_start = seek_start_of_current_line(f)?;
+        let mut line_start = start_of_current_line(f)?;
 
         match f.read_exact(&mut buf) {
             Ok(_) => (),
@@ -76,8 +76,8 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
                     // through the file in a binary search fashion, we may not
                     // be at the earliest possible match. Scan through the file
                     // firward or backward until we get to a non-exact match.
-                    SeekType::FirstGreaterThan => {
-                        let new_start = seek_start_of_prev_line(f)?;
+                    Type::FirstGreaterThan => {
+                        let new_start = start_of_prev_line(f)?;
                         if new_start.is_none() {
                             f.seek(SeekFrom::Start(0))?;
                             return Ok(Some(0));
@@ -91,8 +91,8 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
                             line_start = new_start.unwrap();
                         }
                     }
-                    SeekType::LastLessThan => {
-                        let new_start = seek_start_of_next_line(f)?;
+                    Type::LastLessThan => {
+                        let new_start = start_of_next_line(f)?;
                         if new_start.is_none() {
                             f.seek(SeekFrom::Start(line_start))?;
                             return Ok(Some(line_start));
@@ -125,17 +125,45 @@ pub fn seek<T: Seek + Read>(f: &mut T, prefix: &str, seek_type: SeekType) -> Res
     if start != 0 && end != file_size {
         // We've not found an exact match but we're in the middle of the file somewhere.
         // Check to make sure we're in the right place before returning.
+        match seek_type {
+            Type::LastLessThan => {
+                let line_start = start_of_current_line(f)?;
+                f.read_exact(&mut buf)?;
+                match bytes.cmp(&buf) {
+                    Ordering::Greater | Ordering::Equal => {
+                        f.seek(SeekFrom::Start(line_start))?;
+                        return Ok(Some(line_start));
+                    }, Ordering::Less => {
+                        f.seek(SeekFrom::Start(line_start))?;
+                        return Ok(start_of_prev_line(f)?);
+                    }
+                }
+            },
+            Type::FirstGreaterThan => {
+                let line_start = start_of_current_line(f)?;
+                f.read_exact(&mut buf)?;
+                match bytes.cmp(&buf) {
+                    Ordering::Greater | Ordering::Equal => {
+                        f.seek(SeekFrom::Start(line_start))?;
+                        return Ok(start_of_prev_line(f)?);
+                    }, Ordering::Less => {
+                        f.seek(SeekFrom::Start(line_start))?;
+                        return Ok(Some(line_start));
+                    }
+                }
+            },
+        }
     }
 
     match (seek_type, end) {
-        (SeekType::FirstGreaterThan, 0) => Ok(Some(0)),
-        (SeekType::FirstGreaterThan, _) => Ok(None),
-        (SeekType::LastLessThan, 0) => Ok(None),
-        (SeekType::LastLessThan, _) => Ok(Some(seek_start_of_current_line(f)?)),
+        (Type::FirstGreaterThan, 0) => Ok(Some(0)),
+        (Type::FirstGreaterThan, _) => Ok(None),
+        (Type::LastLessThan, 0) => Ok(None),
+        (Type::LastLessThan, _) => Ok(Some(start_of_current_line(f)?)),
     }
 }
 
-pub fn seek_start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
+pub fn start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     let mut buf = [0; 1];
     let mut pos = f.seek(SeekFrom::Current(0))?;
 
@@ -155,8 +183,8 @@ pub fn seek_start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>>
     }
 }
 
-pub fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
-    seek_start_of_current_line(f)?;
+pub fn start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
+    start_of_current_line(f)?;
 
     let mut buf = [0; 1];
     let mut pos = f.seek(SeekFrom::Current(0))?;
@@ -184,7 +212,7 @@ pub fn seek_start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>>
     }
 }
 
-pub fn seek_start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
+pub fn start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
     let mut buf = [0; 1];
     let mut pos = f.seek(SeekFrom::Current(0))?;
 
@@ -261,10 +289,10 @@ mod tests {
     #[test_case("line 1\nline 2\nline 3",   19 => "line 3"   ; "end of third line")]
     #[test_case("line 1\nline 2\nline 3",   26 => "line 3"   ; "past eof")]
     #[test_case("line 1\nline 2\nline 3\n", 20 => "line 3\n" ; "last line when line ends with eof")]
-    fn test_seek_start_of_current_line(s: &str, pos: u64) -> String {
+    fn test_start_of_current_line(s: &str, pos: u64) -> String {
         let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
-        seek_start_of_current_line(&mut r).unwrap();
+        start_of_current_line(&mut r).unwrap();
         read_line(&mut r).unwrap()
     }
 
@@ -277,10 +305,10 @@ mod tests {
     #[test_case("line 1\nline 2\nline 3", 14 => None     ; "start of last line")]
     #[test_case("line 1\nline 2\nline 3", 16 => None     ; "middle of last line")]
     #[test_case("line 1\nline 2\nline 3", 19 => None     ; "end of last line")]
-    fn test_seek_start_of_next_line(s: &str, pos: u64) -> Option<u64> {
+    fn test_start_of_next_line(s: &str, pos: u64) -> Option<u64> {
         let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
-        seek_start_of_next_line(&mut r).unwrap()
+        start_of_next_line(&mut r).unwrap()
     }
 
     #[test_case("line 1\nline 2\nline 3", 0  => None     ; "start of first line")]
@@ -293,27 +321,29 @@ mod tests {
     #[test_case("line 1\nline 2\nline 3", 14 => Some(7)  ; "start of last line")]
     #[test_case("line 1\nline 2\nline 3", 16 => Some(7)  ; "middle of last line")]
     #[test_case("line 1\nline 2\nline 3", 19 => Some(7)  ; "end of last line")]
-    fn test_seek_start_of_prev_line(s: &str, pos: u64) -> Option<u64> {
+    fn test_start_of_prev_line(s: &str, pos: u64) -> Option<u64> {
         let mut r = Cursor::new(s.as_bytes());
         r.seek(SeekFrom::Start(pos)).unwrap();
-        seek_start_of_prev_line(&mut r).unwrap()
+        start_of_prev_line(&mut r).unwrap()
     }
 
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "b", SeekType::FirstGreaterThan => Some(2)  ; "SeekType first: find line in middle of file")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "a", SeekType::FirstGreaterThan => Some(0)  ; "SeekType first: find first line")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "g", SeekType::FirstGreaterThan => Some(12) ; "SeekType first: find last line")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "h", SeekType::FirstGreaterThan => None     ; "SeekType first: seek past end of file")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "A", SeekType::FirstGreaterThan => Some(0)  ; "SeekType first: find prefix before first line")]
-    #[test_case("a\nb\nb\nb\nb\nb\nc\n", "b", SeekType::FirstGreaterThan => Some(2)  ; "SeekType first: make sure we seek to the first occurrence")]
-    #[test_case("b\nb\nb\nb\nb\nb\nc\n", "b", SeekType::FirstGreaterThan => Some(0)  ; "SeekType first: even if the first occurence is at the start of the file")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "b", SeekType::LastLessThan     => Some(2)  ; "SeekType last: find line in middle of file")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "a", SeekType::LastLessThan     => Some(0)  ; "SeekType last: find first line")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "g", SeekType::LastLessThan     => Some(12) ; "SeekType last: find last line")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "h", SeekType::LastLessThan     => Some(12) ; "SeekType last: seek past end of file")]
-    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "A", SeekType::LastLessThan     => None     ; "SeekType last: find prefix before first line")]
-    #[test_case("a\nb\nb\nb\nb\nb\nc\n", "b", SeekType::LastLessThan     => Some(10) ; "SeekType last: make sure we seek to the last occurrence")]
-    #[test_case("b\nb\nb\nb\nb\nb\nb\n", "b", SeekType::LastLessThan     => Some(12) ; "SeekType last: even if the last occurence is at the end of the file")]
-    fn test_seek(s: &str, prefix: &str, seek_type: SeekType) -> Option<u64> {
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "b", Type::FirstGreaterThan => Some(2)  ; "Type first: find line in middle of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "a", Type::FirstGreaterThan => Some(0)  ; "Type first: find first line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "g", Type::FirstGreaterThan => Some(12) ; "Type first: find last line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "h", Type::FirstGreaterThan => None     ; "Type first: seek past end of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "A", Type::FirstGreaterThan => Some(0)  ; "Type first: find prefix before first line")]
+    #[test_case("a\nb\nb\nb\nb\nb\nc\n", "b", Type::FirstGreaterThan => Some(2)  ; "Type first: make sure we seek to the first occurrence")]
+    #[test_case("b\nb\nb\nb\nb\nb\nc\n", "b", Type::FirstGreaterThan => Some(0)  ; "Type first: even if the first occurence is at the start of the file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "b", Type::LastLessThan     => Some(2)  ; "Type last: find line in middle of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "a", Type::LastLessThan     => Some(0)  ; "Type last: find first line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "g", Type::LastLessThan     => Some(12) ; "Type last: find last line")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "h", Type::LastLessThan     => Some(12) ; "Type last: seek past end of file")]
+    #[test_case("a\nb\nc\nd\ne\nf\ng\n", "A", Type::LastLessThan     => None     ; "Type last: find prefix before first line")]
+    #[test_case("a\nb\nb\nb\nb\nb\nc\n", "b", Type::LastLessThan     => Some(10) ; "Type last: make sure we seek to the last occurrence")]
+    #[test_case("b\nb\nb\nb\nb\nb\nb\n", "b", Type::LastLessThan     => Some(12) ; "Type last: even if the last occurence is at the end of the file")]
+
+    #[test_case("aaaa\naaaa\nbbbb\nbbbb\ncccc\n", "bbbb", Type::LastLessThan => Some(4) ; "Type last: longer lines")]
+    fn test_seek(s: &str, prefix: &str, seek_type: Type) -> Option<u64> {
         let mut r = Cursor::new(s.as_bytes());
         seek(&mut r, prefix, seek_type).unwrap()
     }
