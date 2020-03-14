@@ -89,7 +89,9 @@ fn app(opt: Opt) -> Result<()> {
     }
 
     if opt.num_entries.is_some() && opt.num_entries.unwrap() < 1 {
-        return Err(Error::StringError("-n must be greater than or equal to 1".to_owned()));
+        return Err(Error::StringError(
+            "-n must be greater than or equal to 1".to_owned(),
+        ));
     }
 
     let mut entries_printed = 0;
@@ -291,12 +293,15 @@ mod tests {
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--end", "nope"],               "unrecognised date format")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--format", "{{"],              "invalid handlebars syntax")]
     fn test_hmmq_errors(args: Vec<&str>, error: &str) {
-        let assert = Command::cargo_bin("hmmq")
-            .unwrap()
-            .args(args)
-            .assert();
+        let assert = Command::cargo_bin("hmmq").unwrap().args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
-        assert_eq!(stderr.contains(error), true, "could not find \"{}\" in \"{}\"", error, stderr);
+        assert_eq!(
+            stderr.contains(error),
+            true,
+            "could not find \"{}\" in \"{}\"",
+            error,
+            stderr
+        );
     }
 }
