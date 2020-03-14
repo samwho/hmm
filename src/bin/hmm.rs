@@ -100,10 +100,9 @@ fn editor() -> Result<String> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
-    use hmm::{entries::Entries, entry::Entry};
-    use std::convert::TryInto;
+    use hmm::entries::Entries;
     use std::fs::File;
-    use std::io::{BufRead, BufReader};
+    use std::io::BufReader;
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
@@ -149,10 +148,12 @@ mod tests {
         let mut date: DateTime<FixedOffset> =
             DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00").unwrap();
 
-        let mut messages: Vec<String> = Vec::with_capacity(messages.len());
         let r = BufReader::new(File::open(&path).unwrap());
-        for line in r.lines() {
-            let entry: Entry = line.unwrap().as_str().try_into().unwrap();
+        let entries = Entries::new(r);
+        let mut messages: Vec<String> = Vec::with_capacity(messages.len());
+        for result in entries {
+            let entry = result.unwrap();
+
             messages.push(entry.message().to_owned());
 
             assert_eq!(true, &date <= entry.datetime());
