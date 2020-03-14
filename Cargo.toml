@@ -3,7 +3,6 @@ name = "hmm"
 version = "0.1.0"
 authors = ["Sam Rose <hello@samwho.dev>"]
 edition = "2018"
-license = "MIT"
 license-file = "LICENSE"
 keywords = ["notes", "cli"]
 categories = ["command-line-utilities"]
