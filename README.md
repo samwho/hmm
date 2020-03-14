@@ -37,6 +37,14 @@ note taking in the terminal with the ability to search later.
 
 I plan to upload `hmm` to various package repositories, but until then...
 
+## Using cargo
+
+[Install Rust][2], then run:
+    
+    cargo install hmmcli
+
+Now the `hmm` and `hmmq` binaries should be available in your terminal.
+
 ## From source
 
 [Install Rust][2], [install git][3] then run:
