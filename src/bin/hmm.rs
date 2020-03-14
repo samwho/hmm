@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use fs2::FileExt;
-use hmm::{entries::Entries, entry::Entry, error::Error, Result};
+use hmmcli::{entries::Entries, entry::Entry, error::Error, Result};
 use std::fs::OpenOptions;
 use std::io::{stderr, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
@@ -101,7 +101,7 @@ fn compose_entry(editor: &str) -> Result<String> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
-    use hmm::entries::Entries;
+    use hmmcli::entries::Entries;
     use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;

@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use hmm::{entries::Entries, error::Error, format::Format, Result};
+use hmmcli::{entries::Entries, error::Error, format::Format, Result};
 use rand::distributions::{Distribution, Uniform};
 use std::cmp::Ordering;
 use std::io::{stderr, BufReader, Write};
