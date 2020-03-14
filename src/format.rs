@@ -72,12 +72,12 @@ impl HelperDef for StrftimeHelper {
         _: &mut RenderContext,
         out: &mut dyn Output,
     ) -> HelperResult {
-        let date_str = h.param(0).unwrap().value().render();
+        let date_str = h.param(1).unwrap().value().render();
         let date = DateTime::parse_from_rfc3339(&date_str)
             .map_err(|_| handlebars::RenderError::new("couldn't parse date"))?;
         let local_date = date.with_timezone(&Local);
 
-        let format_str = h.param(1).unwrap().value().render();
+        let format_str = h.param(0).unwrap().value().render();
 
         Ok(out.write(&local_date.format(&format_str).to_string())?)
     }

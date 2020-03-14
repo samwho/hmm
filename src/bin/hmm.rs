@@ -1,9 +1,8 @@
 use chrono::prelude::*;
 use fs2::FileExt;
-use hmm::{entry::Entry, error::Error, seek, Result};
-use std::convert::TryInto;
+use hmm::{entries::Entries, entry::Entry, error::Error, Result};
 use std::fs::OpenOptions;
-use std::io::{stderr, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{stderr, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::{exit, Command};
 use structopt::StructOpt;
@@ -52,17 +51,17 @@ fn app(opt: Opt) -> Result<()> {
 
     f.lock_exclusive()?;
 
-    let meta = f.metadata();
-    if meta.is_ok() && meta.unwrap().len() > 0 {
-        let return_pos = f.seek(SeekFrom::Current(0))?;
-        let last_line = read_last_line(&mut f)?;
-        let last_entry: Entry = last_line.as_str().try_into()?;
+    let mut entries = Entries::new(BufReader::new(&mut f));
 
-        if last_entry.datetime() > &Utc::now() {
+    if entries.len()? > 0 {
+        entries.seek_to_end()?;
+        let entry = entries.prev_entry()?.unwrap();
+
+        if entry.datetime() > &Utc::now() {
             return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
         }
 
-        f.seek(SeekFrom::Start(return_pos))?;
+        entries.seek_to_end()?;
     }
 
     let res = Entry::with_message(&msg).write(BufWriter::new(&f));
@@ -97,22 +96,14 @@ fn editor() -> Result<String> {
     }
 }
 
-fn read_last_line(f: &mut (impl Seek + Read)) -> Result<String> {
-    f.seek(SeekFrom::End(-1))?;
-    seek::start_of_current_line(f)?;
-    let mut buf = String::new();
-    BufReader::new(f).read_line(&mut buf)?;
-    Ok(buf)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, Command};
-    use hmm::entry::Entry;
+    use hmm::{entries::Entries, entry::Entry};
     use std::convert::TryInto;
     use std::fs::File;
-    use std::io::{BufRead, BufReader, Cursor};
+    use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
@@ -139,13 +130,8 @@ mod tests {
         let assert = run_with_path(&path, args);
         assert.success();
 
-        let mut buf = String::new();
-        BufReader::new(File::open(&path).unwrap())
-            .read_line(&mut buf)
-            .unwrap();
-
-        let entry: Entry = buf.as_str().try_into().unwrap();
-        entry.message().to_owned()
+        let mut entries = Entries::new(BufReader::new(File::open(&path).unwrap()));
+        entries.next_entry().unwrap().unwrap().message().to_owned()
     }
 
     #[test_case(vec!["1", "2"]           => vec!["1", "2"]           ; "two invocations")]
@@ -174,11 +160,5 @@ mod tests {
         }
 
         messages
-    }
-
-    #[test_case("line 1\nline 2\nline 3\n" => "line 3\n" ; "line ending in new line")]
-    fn test_read_last_line(s: &str) -> String {
-        let mut r = Cursor::new(s.as_bytes());
-        read_last_line(&mut r).unwrap()
     }
 }

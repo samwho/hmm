@@ -131,7 +131,7 @@ fn app(opt: Opt) -> Result<()> {
                     // If we've found an entry that occurs before our given start
                     // date, break out and stop printing.
                     if opt.start.is_some()
-                        && opt.start.unwrap().cmp(entry.datetime()) == Ordering::Less
+                        && opt.start.unwrap().cmp(entry.datetime()) == Ordering::Greater
                     {
                         break;
                     }
@@ -261,10 +261,15 @@ mod tests {
 2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"
 ";
 
-    #[test_case(vec!["-n", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n" ; "get first line")]
+    #[test_case(vec!["-n", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n")]
     #[test_case(vec!["-n", "2", "--format", "{{ message }}"] => "1\n2\n" ; "get first two lines")]
     #[test_case(vec!["-n", "2", "--descending", "--format", "{{ message }}"] => "6\n5\n" ; "get last two lines")]
-    #[test_case(vec!["-n", "2", "--descending", "--end", "2020-05-12T23:28:49", "--format", "{{ message }}"] => "5\n4\n" ; "get second to last two lines")]
+    #[test_case(vec!["-n", "2", "--descending", "--end", "2020-05-12T23:28:49", "--format", "{{ message }}"] => "5\n4\n")]
+    #[test_case(vec!["--descending", "--start", "2021", "--end", "2020"] => "")]
+    #[test_case(vec!["--start", "2021", "--end", "2020"] => "")]
+    #[test_case(vec!["-n", "1", "--format", "{{ indent message }}"] => "| 1\n")]
+    #[test_case(vec!["-n", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
+    #[test_case(vec!["--start", "2020-06-13", "--end", "2020-06-14", "--format", "{{ message }}"] => "6\n")]
     fn test_hmmq(args: Vec<&str>) -> String {
         let path = new_tempfile(TESTDATA);
 

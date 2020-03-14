@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::convert::TryInto;
 use std::io::{BufRead, Read, Seek, SeekFrom};
 
-pub struct Entries<T: Seek + Read> {
+pub struct Entries<T: Seek + Read + BufRead> {
     f: T,
     buf: String,
     csv_reader_builder: csv::ReaderBuilder,
@@ -166,6 +166,20 @@ impl<T: Seek + Read + BufRead> Entries<T> {
     }
 }
 
+impl<T: Seek + Read + BufRead> Iterator for Entries<T> {
+    type Item = Result<Entry>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next_entry() {
+            Ok(opt) => match opt {
+                Some(entry) => Some(Ok(entry)),
+                None => None,
+            },
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,6 +294,21 @@ mod tests {
 
         entries.seek_to_end()?;
         assert_eq!(entries.prev_entry()?.unwrap().message(), "6");
+        Ok(())
+    }
+
+    #[test]
+    fn test_iterator() -> Result<()> {
+        let r = Cursor::new(Vec::from(TESTDATA.as_bytes()));
+        let mut entries = Entries::new(r);
+
+        assert_eq!(entries.next().unwrap().unwrap().message(), "1");
+        assert_eq!(entries.next().unwrap().unwrap().message(), "2");
+        assert_eq!(entries.next().unwrap().unwrap().message(), "3");
+        assert_eq!(entries.next().unwrap().unwrap().message(), "4");
+        assert_eq!(entries.next().unwrap().unwrap().message(), "5");
+        assert_eq!(entries.next().unwrap().unwrap().message(), "6");
+        assert_eq!(entries.next().is_none(), true);
         Ok(())
     }
 }
