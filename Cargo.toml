@@ -3,7 +3,7 @@ name = "hmmcli"
 version = "0.1.0"
 authors = ["Sam Rose <hello@samwho.dev>"]
 edition = "2018"
-license-file = "LICENSE"
+license = "MIT"
 keywords = ["notes", "cli"]
 categories = ["command-line-utilities"]
 readme = "README.md"
@@ -15,6 +15,9 @@ include = [
     "README.md",
     "**/*.rs",
 ]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 csv = "1.1"

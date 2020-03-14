@@ -1,5 +1,9 @@
 # hmm
 
+
+[![Build status](https://github.com/samwho/hmm/workflows/Tests/badge.svg)](https://github.com/samwho/hmm/actions)
+[![Crates.io](https://img.shields.io/crates/v/hmmcli.svg)](https://crates.io/crates/hmmcli)
+
 `hmm` is a small command-line note taking app written in Rust. Notes are
 written in plain text and indexed by the time they were written.
 
