@@ -121,6 +121,6 @@ in your `.hmm` file, and as such longer entries are more likely to be picked.
 This is a trade-off. Picking entries in a truly random fashion would require
 reading the entire file, which is against the philosophy of `hmmq`.
 
-[1] https://rustup.rs/
-[2] https://rustup.rs/
-[3] https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
+[1]: https://rustup.rs/
+[2]: https://rustup.rs/
+[3]: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
