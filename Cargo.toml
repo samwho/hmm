@@ -10,6 +10,12 @@ categories = ["command-line-utilities"]
 readme = "README.md"
 repository = "https://github.com/samwho/hmm"
 description = "A small command-line note-taking app"
+include = [
+    "Cargo.toml",
+    "LICENSE",
+    "README.md",
+    "**/*.rs",
+]
 
 [dependencies]
 csv = "1.1"
