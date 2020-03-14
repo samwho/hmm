@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use fs2::FileExt;
-use hmm::{seek, entry::Entry, error::Error, Result};
+use hmm::{entry::Entry, error::Error, seek, Result};
 use std::convert::TryInto;
 use std::fs::OpenOptions;
 use std::io::{stderr, BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
@@ -160,7 +160,8 @@ mod tests {
 
         // Start with the earliest possible date, as we're going to compare the dates we find
         // in the resulting file with this value to make sure they always increase.
-        let mut date: DateTime<FixedOffset> = DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00").unwrap();
+        let mut date: DateTime<FixedOffset> =
+            DateTime::parse_from_rfc3339("1970-01-01T00:00:00+00:00").unwrap();
 
         let mut messages: Vec<String> = Vec::with_capacity(messages.len());
         let r = BufReader::new(File::open(&path).unwrap());

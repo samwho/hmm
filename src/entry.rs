@@ -58,7 +58,7 @@ impl TryFrom<&StringRecord> for Entry {
             .ok_or_else(|| Error::StringError("malformed CSV".to_owned()))?;
 
         Ok(Entry {
-            datetime: chrono::DateTime::parse_from_rfc3339(date)?.into(),
+            datetime: chrono::DateTime::parse_from_rfc3339(date)?,
             message: serde_json::from_str(&msg)?,
         })
     }

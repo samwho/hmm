@@ -1,16 +1,8 @@
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use hmm::{
-    seek,
-    entry::Entry,
-    error::Error,
-    format::Format,
-    Result,
-};
+use chrono::prelude::*;
+use hmm::{entries::Entries, error::Error, format::Format, Result};
 use rand::distributions::{Distribution, Uniform};
 use std::cmp::Ordering;
-use std::convert::TryInto;
-use std::fs::File;
-use std::io::{stderr, BufRead, BufReader, Seek, SeekFrom, Write};
+use std::io::{stderr, BufReader, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -52,13 +44,13 @@ struct Opt {
     /// local time, and can be specified using any subset of an RFC3339 date,
     /// e.g. 2012, 2012-01, 2012-01-29, 2012-01-29T14, 2012-01-29T14:30,
     /// 2012-01-29T14:30:11.
-    #[structopt(short = "s", long = "start")]
-    start: Option<String>,
+    #[structopt(short = "s", long = "start", parse(try_from_str = parse_date_arg))]
+    start: Option<DateTime<FixedOffset>>,
 
     /// Date to stop printing at, exclusive. Like --start, this can be any subset of an
     /// RFC3339 date. See --start for details.
-    #[structopt(short = "e", long = "end")]
-    end: Option<String>,
+    #[structopt(short = "e", long = "end", parse(try_from_str = parse_date_arg))]
+    end: Option<DateTime<FixedOffset>>,
 
     /// Only print entries that contain this substring exactly.
     #[structopt(long = "contains")]
@@ -81,170 +73,138 @@ fn app(opt: Opt) -> Result<()> {
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
+    let f = std::fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(path)?;
+    let mut entries = Entries::new(BufReader::new(f));
+
     if opt.random {
-        print_random_entry(&path, &formatter)?;
+        let mut rng = rand::thread_rng();
+        let range = Uniform::new(0, entries.len()?);
+        let entry = entries.at(range.sample(&mut rng))?.unwrap();
+        println!("{}", formatter.format_entry(&entry)?);
         return Ok(());
     }
 
-    let mut f = BufReader::new(File::open(&path)?);
-    let mut record = csv::StringRecord::new();
-    let mut buf = String::new();
-
-    let mut reader_builder = csv::ReaderBuilder::new();
-    reader_builder.has_headers(false);
-
-    let ed = match opt.end {
-        Some(ref end) => parse_date_arg(end)?.to_rfc3339(),
-        None => "".to_owned(),
-    };
-
-    let sd = match opt.start {
-        Some(ref start) => parse_date_arg(start)?.to_rfc3339(),
-        None => "".to_owned(),
-    };
-
-    let mut count = 0;
+    let mut entries_printed = 0;
 
     if opt.descending {
-        // print in descending order
-        if opt.end.is_some() {
-            if seek::seek(&mut f, &ed, seek::Type::LastLessThan)?.is_none() {
-                return Ok(());
+        match opt.end {
+            Some(ref end_date) => {
+                // Because we want to print in descending order from some end
+                // date, we have to seek to the first occurrence of the end date
+                // and then scan forward incase there are multiple entries with
+                // the same date, exiting the scan when we find an entry with a
+                // later date. In practice this will almost always be a single
+                // scan forward, but it's best to be correct.
+                entries.seek_to_first(end_date)?;
+                loop {
+                    match entries.next_entry()? {
+                        None => break,
+                        Some(entry) => {
+                            if let Ordering::Greater = entry.datetime().cmp(end_date) {
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-        } else {
-            f.seek(SeekFrom::End(-1))?;
-            seek::start_of_current_line(&mut f)?;
+            None => {
+                // We read the last entry to get to the end of the file. We'll
+                // end up reading the entry again later, so it's definitely not
+                // the most optimal way to achieve this but it is the simplest.
+                let len = entries.len()?;
+                entries.at(len)?;
+            }
         }
 
         loop {
-            buf.clear();
-            f.read_line(&mut buf)?;
-
-            if opt.start.is_some() {
-                match buf.as_bytes().cmp(sd.as_bytes()) {
-                    Ordering::Equal | Ordering::Less => break,
-                    _ => (),
-                }
-            }
-
-            let mut r = reader_builder.from_reader(buf.as_bytes());
-            if !r.read_record(&mut record)? {
+            if opt.num_entries.is_some() && entries_printed >= opt.num_entries.unwrap() {
                 break;
             }
 
-            let entry: Entry = (&record).try_into()?;
+            match entries.prev_entry()? {
+                None => break,
+                Some(entry) => {
+                    // If we've found an entry that occurs before our given start
+                    // date, break out and stop printing.
+                    if opt.start.is_some()
+                        && opt.start.unwrap().cmp(entry.datetime()) == Ordering::Less
+                    {
+                        break;
+                    }
 
-            if let Some(ref contains) = opt.contains {
-                if !entry.message().contains(contains) {
-                    continue;
+                    // If we've found an entry that does not contain the specified
+                    // string to search for, move to the next loop iteration.
+                    if opt.contains.is_some()
+                        && !entry.message().contains(opt.contains.as_ref().unwrap())
+                    {
+                        continue;
+                    }
+
+                    println!("{}", formatter.format_entry(&entry)?);
+                    entries_printed += 1;
                 }
-            }
-
-            if let Some(n) = opt.num_entries {
-                count += 1;
-                if count > n {
-                    break;
-                }
-            }
-
-            println!("{}", formatter.format_entry(&entry)?);
-
-            seek::start_of_prev_line(&mut f)?;
-            if seek::start_of_prev_line(&mut f)?.is_none() {
-                break;
-            }
+            };
         }
     } else {
-        // print in ascending order
-        if seek::seek(&mut f, &sd, seek::Type::FirstGreaterThan)?.is_none() {
-            return Ok(());
+        if let Some(ref start_date) = opt.start {
+            entries.seek_to_first(start_date)?;
         }
 
         loop {
-            buf.clear();
-            f.read_line(&mut buf)?;
-
-            if opt.end.is_some() {
-                match buf.as_bytes().cmp(ed.as_bytes()) {
-                    Ordering::Equal | Ordering::Greater => break,
-                    _ => (),
-                }
-            }
-
-            let mut r = reader_builder.from_reader(buf.as_bytes());
-            if !r.read_record(&mut record)? {
+            if opt.num_entries.is_some() && entries_printed >= opt.num_entries.unwrap() {
                 break;
             }
 
-            let entry: Entry = (&record).try_into()?;
+            match entries.next_entry()? {
+                None => break,
+                Some(entry) => {
+                    // If we've found an entry that occurs after our given end
+                    // date, break out and stop printing.
+                    if opt.end.is_some() && opt.end.unwrap().cmp(entry.datetime()) == Ordering::Less
+                    {
+                        break;
+                    }
 
-            if let Some(ref contains) = opt.contains {
-                if !entry.message().contains(contains) {
-                    continue;
+                    // If we've found an entry that does not contain the specified
+                    // string to search for, move to the next loop iteration.
+                    if opt.contains.is_some()
+                        && !entry.message().contains(opt.contains.as_ref().unwrap())
+                    {
+                        continue;
+                    }
+
+                    println!("{}", formatter.format_entry(&entry)?);
+                    entries_printed += 1;
                 }
-            }
-
-            if let Some(n) = opt.num_entries {
-                count += 1;
-                if count > n {
-                    break;
-                }
-            }
-
-            println!("{}", formatter.format_entry(&entry)?);
+            };
         }
     }
 
     Ok(())
 }
 
-fn print_random_entry(path: &PathBuf, formatter: &Format) -> Result<()> {
-    let mut f = File::open(path)?;
-
-    let mut reader_builder = csv::ReaderBuilder::new();
-    reader_builder.has_headers(false);
-
-    let mut rng = rand::thread_rng();
-    let range = Uniform::new(0, f.metadata()?.len());
-    f.seek(SeekFrom::Start(range.sample(&mut rng)))?;
-    seek::start_of_current_line(&mut f)?;
-
-    let mut buf = String::new();
-    let mut br = BufReader::new(f);
-    br.read_line(&mut buf)?;
-
-    let mut r = reader_builder.from_reader(buf.as_bytes());
-    let mut record = csv::StringRecord::new();
-    if !r.read_record(&mut record)? {
-        return Err(Error::StringError(format!(
-            "failed to parse \"{}\" as CSV row",
-            buf
-        )));
-    }
-
-    let entry: Entry = (&record).try_into()?;
-    println!("{}", formatter.format_entry(&entry)?);
-    Ok(())
-}
-
-fn parse_date_arg(s: &str) -> Result<DateTime<Utc>> {
+fn parse_date_arg(s: &str) -> Result<DateTime<FixedOffset>> {
     if let Ok(d) = parse_local_datetime_str(&format!("{}-01-01T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
     if let Ok(d) = parse_local_datetime_str(&format!("{}-01T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
     if let Ok(d) = parse_local_datetime_str(&format!("{}T00:00:00", s), "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
     if let Ok(d) = parse_local_datetime_str(&format!("{}:00:00", s), "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
     if let Ok(d) = parse_local_datetime_str(&format!("{}:00", s), "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
     if let Ok(d) = parse_local_datetime_str(s, "%Y-%m-%dT%H:%M:%S") {
-        return Ok(d);
+        return Ok(d.into());
     }
 
     Err(Error::StringError(format!("unrecognised date format: \"{}\", accepted formats include things like:\n  - 2012\n  - 2012-01\n  - 2012-01-24\n  - 2012-01-24T16\n  - 2012-01-24T16:20\n  - 2012-01-24T16:20:30", s)))
