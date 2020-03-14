@@ -20,7 +20,7 @@ struct Opt {
     /// "datetime" and "message" are passed in.
     #[structopt(
         long = "format",
-        default_value = "{{ color \"blue\" (strftime datetime \"%Y-%m-%d %H:%M:%S\") }}\n{{ indent message }}\n"
+        default_value = "{{ color \"blue\" (strftime \"%Y-%m-%d %H:%M:%S\" datetime) }}\n{{ indent message }}\n"
     )]
     format: String,
 
@@ -38,7 +38,7 @@ struct Opt {
     /// this will print the first N of that range. In ascending order, this is the first
     /// N entries chronologically, and in descending order it will be the last N entries.
     #[structopt(short = "n")]
-    num_entries: Option<usize>,
+    num_entries: Option<i64>,
 
     /// Date to start printing from, inclusive. The date will be read in your
     /// local time, and can be specified using any subset of an RFC3339 date,
@@ -86,6 +86,10 @@ fn app(opt: Opt) -> Result<()> {
         let entry = entries.at(range.sample(&mut rng))?.unwrap();
         println!("{}", formatter.format_entry(&entry)?);
         return Ok(());
+    }
+
+    if opt.num_entries.is_some() && opt.num_entries.unwrap() < 1 {
+        return Err(Error::StringError("-n must be greater than or equal to 1".to_owned()));
     }
 
     let mut entries_printed = 0;
@@ -255,7 +259,7 @@ mod tests {
 
     const TESTDATA: &str = "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"
 2020-02-12T23:08:40.987613062+00:00,\"\"\"2\"\"\"
-2020-03-12T00:00:00.000000000+00:00,\"\"\"3\"\"\"
+2020-03-12T00:00:00+00:00,\"\"\"3\"\"\"
 2020-04-12T23:28:45.726598931+00:00,\"\"\"4\"\"\"
 2020-05-12T23:28:48.495151445+00:00,\"\"\"5\"\"\"
 2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"
@@ -270,10 +274,29 @@ mod tests {
     #[test_case(vec!["-n", "1", "--format", "{{ indent message }}"] => "| 1\n")]
     #[test_case(vec!["-n", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
     #[test_case(vec!["--start", "2020-06-13", "--end", "2020-06-14", "--format", "{{ message }}"] => "6\n")]
+    #[test_case(vec!["--format", "{{ raw }}"] => TESTDATA)]
     fn test_hmmq(args: Vec<&str>) -> String {
         let path = new_tempfile(TESTDATA);
 
         let assert = run_with_path(&path, args);
         String::from_utf8(assert.get_output().stdout.clone()).unwrap()
+    }
+
+    #[test_case(vec!["--path", "/this/path/does/not/exist"],        "No such file or directory")] // lame error?
+    #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
+    #[test_case(vec!["--nonexistent"],                              "Found argument '--nonexistent' which wasn't expected")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n=-1"],                       "-n must be greater than or equal to 1")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n", "0"],                     "-n must be greater than or equal to 1")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--start", "nope"],             "unrecognised date format")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--end", "nope"],               "unrecognised date format")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--format", "{{"],              "invalid handlebars syntax")]
+    fn test_hmmq_errors(args: Vec<&str>, error: &str) {
+        let assert = Command::cargo_bin("hmmq")
+            .unwrap()
+            .args(args)
+            .assert();
+        let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
+        assert.failure();
+        assert_eq!(stderr.contains(error), true, "could not find \"{}\" in \"{}\"", error, stderr);
     }
 }

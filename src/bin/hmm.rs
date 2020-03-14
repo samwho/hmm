@@ -16,6 +16,12 @@ struct Opt {
     #[structopt(long = "path")]
     path: Option<PathBuf>,
 
+    /// If you call hmm with no arguments, it will attempt to open an editor to
+    /// compose an entry. It will use this value, or the EDITOR environment
+    /// variable.
+    #[structopt(long = "editor", env)]
+    editor: Option<String>,
+
     /// Message to add to your hmm journal. Feel free to use quotes or not, but
     /// be wary of how your shell interprets strings. For example, # is often the
     /// beginning of a comment, so anything after it is likely to be ignored.
@@ -33,11 +39,6 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let mut msg = itertools::join(opt.message, " ");
-    if msg.is_empty() {
-        msg = compose_entry(&editor()?)?;
-    }
-
     let path = opt
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
@@ -48,6 +49,16 @@ fn app(opt: Opt) -> Result<()> {
         .append(true)
         .create(true)
         .open(path)?;
+
+    let mut msg = itertools::join(opt.message, " ");
+    if msg.is_empty() {
+        if opt.editor.is_none() {
+            return Err(Error::StringError(
+                "unable to find an editor, set your EDITOR environment variable".to_owned(),
+            ))
+        }
+        msg = compose_entry(&opt.editor.unwrap())?;
+    }
 
     f.lock_exclusive()?;
 
@@ -84,16 +95,6 @@ fn compose_entry(editor: &str) -> Result<String> {
     let mut s = String::new();
     f.read_to_string(&mut s)?;
     Ok(s)
-}
-
-fn editor() -> Result<String> {
-    if let Ok(editor) = std::env::var("EDITOR") {
-        Ok(editor)
-    } else {
-        Err(Error::StringError(
-            "unable to find an editor, set your EDITOR environment variable".to_owned(),
-        ))
-    }
 }
 
 #[cfg(test)]
@@ -161,5 +162,18 @@ mod tests {
         }
 
         messages
+    }
+
+    #[test_case(vec!["--path", "/this/path/does/not/exist"], "No such file or directory")] // lame error?
+    #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
+    #[test_case(vec!["--nonexistent"], "Found argument '--nonexistent' which wasn't expected")]
+    fn test_hmm_errors(args: Vec<&str>, error: &str) {
+        let assert = Command::cargo_bin("hmm")
+            .unwrap()
+            .args(args)
+            .assert();
+        let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
+        assert.failure();
+        assert_eq!(stderr.contains(error), true, "could not find \"{}\" in \"{}\"", error, stderr);
     }
 }
