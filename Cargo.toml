@@ -39,6 +39,11 @@ handlebars = "3.0.1"
 [dev-dependencies]
 test-case = "1.0.0"
 assert_cmd = "0.12"
+rusty-hook = "0.10.1"
+
+[hooks]
+pre-commit = "cargo test"
+pre-push = "cargo fmt -- --check"
 
 [profile.release]
 opt-level = 'z'  # Optimize for size.
