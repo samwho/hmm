@@ -82,7 +82,7 @@ fn app(opt: Opt) -> Result<()> {
         Ok(f) => f,
         Err(e) => {
             return Err(Error::StringError(format!(
-                "couldn't open or create file at {}: {}",
+                "Couldn't open or create file at {}: {}",
                 path.to_string_lossy(),
                 e
             )))
@@ -305,7 +305,7 @@ mod tests {
         String::from_utf8(assert.get_output().stdout.clone()).unwrap()
     }
 
-    #[test_case(vec!["--path", "/this/path/does/not/exist"],        "No such file or directory")] // lame error?
+    #[test_case(vec!["--path", "/this/path/does/not/exist"],        "Couldn't open or create file at")]
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"],                              "Found argument '--nonexistent' which wasn't expected")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n=-1"],                       "-n must be greater than or equal to 1")]

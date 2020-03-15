@@ -1,7 +1,6 @@
 use chrono::prelude::*;
 use fs2::FileExt;
 use hmmcli::{entries::Entries, entry::Entry, error::Error, Result};
-use std::fs::OpenOptions;
 use std::io::{stderr, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::{exit, Command};
@@ -43,18 +42,27 @@ fn app(opt: Opt) -> Result<()> {
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
-    let mut f = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .append(true)
-        .create(true)
-        .open(path)?;
+    let mut fopts = std::fs::OpenOptions::new();
+    fopts.create(true);
+    fopts.read(true);
+    fopts.write(true);
+
+    let mut f = match fopts.open(&path) {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(Error::StringError(format!(
+                "Couldn't open or create file at {}: {}",
+                path.to_string_lossy(),
+                e
+            )))
+        }
+    };
 
     let mut msg = itertools::join(opt.message, " ");
     if msg.is_empty() {
         if opt.editor.is_none() {
             return Err(Error::StringError(
-                "unable to find an editor, set your EDITOR environment variable".to_owned(),
+                "Unable to find an editor, set your EDITOR environment variable".to_owned(),
             ));
         }
         msg = compose_entry(&opt.editor.unwrap())?;
@@ -73,6 +81,9 @@ fn app(opt: Opt) -> Result<()> {
         }
 
         entries.seek_to_end()?;
+
+        //
+        entries.prev_entry()?;
     }
 
     let res = Entry::with_message(&msg).write(BufWriter::new(&f));
@@ -174,7 +185,7 @@ mod tests {
         messages
     }
 
-    #[test_case(vec!["--path", "/this/path/does/not/exist"], "No such file or directory")] // lame error?
+    #[test_case(vec!["--path", "/this/path/does/not/exist"],        "Couldn't open or create file at")]
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"], "Found argument '--nonexistent' which wasn't expected")]
     fn test_hmm_errors(args: Vec<&str>, error: &str) {

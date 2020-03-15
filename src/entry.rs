@@ -30,6 +30,7 @@ impl Entry {
     }
 
     pub fn write(&self, mut w: impl Write) -> Result<()> {
+        println!("{:?}", self.to_csv_row()?.as_bytes());
         Ok(w.write_all(self.to_csv_row()?.as_bytes())?)
     }
 
