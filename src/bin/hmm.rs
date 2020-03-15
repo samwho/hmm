@@ -82,7 +82,11 @@ fn app(opt: Opt) -> Result<()> {
 
         entries.seek_to_end()?;
 
-        //
+        // Because the seek_to_end function seeks in such a way that reading the previous
+        // entry reads the last entry, if we attempted to write to the underlying file at
+        // this point there would be a single null byte in between the last entry and the
+        // new entry. For this reason, we need to read the previous entry to make sure we
+        // aren't leaving any gaps.
         entries.prev_entry()?;
     }
 
