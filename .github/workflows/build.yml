@@ -102,7 +102,6 @@ jobs:
         with:
           command: test
 
-  Publish starship to Crates.io
   cargo_publish:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
