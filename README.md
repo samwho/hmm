@@ -1,6 +1,3 @@
-# hmm
-
-
 [![Build status](https://github.com/samwho/hmm/workflows/Build/badge.svg)](https://github.com/samwho/hmm/actions)
 [![Crates.io](https://img.shields.io/crates/v/hmmcli.svg)](https://crates.io/crates/hmmcli)
 
@@ -9,6 +6,24 @@ written in plain text and indexed by the time they were written.
 
 `hmm` is inspired by [jrnl][1], though with a slightly different use-case in
 mind.
+
+* [Comparison to jrnl](#comparison-to-jrnl)
+* [Installation](#installation)
+    * [Arch Linux (AUR)](#arch-linux-aur)
+    * [Using cargo](#using-cargo)
+    * [From source](#from-source)
+* [Usage](#usage)
+    * [Writing an entry from the CLI](#writing-an-entry-from-the-cli)
+    * [Writing an entry to a different file](#writing-an-entry-to-a-different-file)
+    * [Writing long-form entries in your EDITOR](#writing-long-form-entries-in-your-editor)
+    * [Listing your entries](#listing-your-entries)
+        * [Show the most recent 10 entries](#show-the-most-recent-10-entries)
+        * [Show entries on a specific day](#show-entries-on-a-specific-day)
+        * [Show entries on a given year](#show-entries-on-a-given-year)
+        * [Show entries on a given year in descending order](#show-entries-on-a-given-year-in-descending-order)
+        * [Show all entries from a given date](#show-all-entries-from-a-given-date)
+        * [Show a random entry](#show-a-random-entry)
+    * [Formatting entries](#formatting-entries)
 
 # Comparison to `jrnl`
 
@@ -139,6 +154,26 @@ in your `.hmm` file, and as such longer entries are more likely to be picked.
 This is a trade-off. Picking entries in a truly random fashion would require
 reading the entire file, which is against the philosophy of `hmmq`.
 
+## Formatting entries
+
+`hmmq` makes use of the [Handlebars][4] templating format to determine how entries
+are printed to the terminal. Here's an example of a really simple template:
+
+    hmmq --format "{{ datetime }}: {{ message }}"
+
+It's not much to look at, but it shows how the templates look and all of the
+variables you have access to inside a template.
+
+`hmmq` offers some helper functions to make your templates look nicer. Here's
+the default output format specified explicitly:
+
+    hmmq --format $'{{ color "blue" (strftime "%Y-%m-%d %H:%M:%S" datetime) }}\n{{ indent message }}'
+
+The keen reader will notice the `$` before the format argument. This is a bash
+quirk. Without it, the `\n` inside the format argument will print literally
+instead of being interpreted as a newline.
+
 [1]: https://rustup.rs/
 [2]: https://rustup.rs/
 [3]: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
+[4]: https://handlebarsjs.com/
