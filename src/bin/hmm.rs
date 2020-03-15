@@ -166,6 +166,11 @@ mod tests {
         let path = new_tempfile_path();
         for message in &messages {
             let assert = run_with_path(&path, vec![message]);
+            assert_eq!(
+                assert.get_output().stdout.is_empty(),
+                true,
+                "expected stdout to be empty"
+            );
             assert.success();
         }
 

@@ -82,11 +82,10 @@ jobs:
           command: audit
           
   test:
-    needs: [cargo_check, cargo_audit, clippy]
+    needs: [cargo_check]
     name: Tests
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         rust: [stable, nightly]
@@ -102,29 +101,10 @@ jobs:
         with:
           command: test
 
-  cargo_publish:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    name: Publish Cargo Package
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: cargo login $CRATES_IO_TOKEN
-      - run: cargo publish
-    env:
-      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-
   github_build:
-    needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     name: Build release binaries
     strategy:
-      fail-fast: false
       matrix:
         target:
           - x86_64-unknown-linux-gnu
@@ -184,7 +164,7 @@ jobs:
   github_release:
     if: startsWith(github.ref, 'refs/tags/v')
     name: Create GitHub Release
-    needs: github_build
+    needs: [test, github_build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -220,3 +200,20 @@ jobs:
             hmm-x86_64-pc-windows-msvc.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cargo_publish:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Publish Cargo Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: cargo login $CRATES_IO_TOKEN
+      - run: cargo publish
+    env:
+      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
