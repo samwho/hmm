@@ -100,21 +100,31 @@ fn compose_entry(editor: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{prelude::*, assert::Assert};
+    use assert_cmd::{assert::Assert, prelude::*};
     use hmmcli::entries::Entries;
     use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;
+    use std::process::Command;
     use tempfile::NamedTempFile;
     use test_case::test_case;
-    use std::process::Command;
 
     fn cmd(name: &str) -> Command {
-        escargot::CargoBuild::new().bin(name).current_release().current_target().run().unwrap().command()
+        escargot::CargoBuild::new()
+            .bin(name)
+            .current_release()
+            .current_target()
+            .run()
+            .unwrap()
+            .command()
     }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        cmd("hmm").arg("--path").arg(path.as_os_str()).args(args).assert()
+        cmd("hmm")
+            .arg("--path")
+            .arg(path.as_os_str())
+            .args(args)
+            .assert()
     }
 
     fn new_tempfile_path() -> PathBuf {

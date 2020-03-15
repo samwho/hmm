@@ -240,18 +240,28 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{prelude::*, assert::Assert};
+    use assert_cmd::{assert::Assert, prelude::*};
     use std::path::PathBuf;
+    use std::process::Command;
     use tempfile::NamedTempFile;
     use test_case::test_case;
-    use std::process::Command;
 
     fn cmd(name: &str) -> Command {
-        escargot::CargoBuild::new().bin(name).current_release().current_target().run().unwrap().command()
+        escargot::CargoBuild::new()
+            .bin(name)
+            .current_release()
+            .current_target()
+            .run()
+            .unwrap()
+            .command()
     }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        cmd("hmmq").arg("--path").arg(path.as_os_str()).args(args).assert()
+        cmd("hmmq")
+            .arg("--path")
+            .arg(path.as_os_str())
+            .args(args)
+            .assert()
     }
 
     fn new_tempfile(content: &str) -> PathBuf {
