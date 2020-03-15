@@ -80,7 +80,13 @@ fn app(opt: Opt) -> Result<()> {
 
     let f = match fopts.open(&path) {
         Ok(f) => f,
-        Err(e) => return Err(Error::StringError(format!("couldn't open or create file at {}: {}", path.to_string_lossy(), e))),
+        Err(e) => {
+            return Err(Error::StringError(format!(
+                "couldn't open or create file at {}: {}",
+                path.to_string_lossy(),
+                e
+            )))
+        }
     };
 
     let mut entries = Entries::new(BufReader::new(f));
