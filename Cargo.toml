@@ -42,9 +42,6 @@ assert_cmd = "0.12"
 rusty-hook = "0.10.1"
 escargot = "0.5"
 
-[hooks]
-pre-commit = ["cargo test", "cargo fmt -- --check"]
-
 [profile.release]
 opt-level = 'z'  # Optimize for size.
 lto = true
