@@ -73,11 +73,16 @@ fn app(opt: Opt) -> Result<()> {
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
 
-    let f = std::fs::OpenOptions::new()
-        .create(true)
-        .read(true)
-        .write(true)
-        .open(path)?;
+    let mut fopts = std::fs::OpenOptions::new();
+    fopts.create(true);
+    fopts.read(true);
+    fopts.write(true);
+
+    let f = match fopts.open(&path) {
+        Ok(f) => f,
+        Err(e) => return Err(Error::StringError(format!("couldn't open or create file at {}: {}", path.to_string_lossy(), e))),
+    };
+
     let mut entries = Entries::new(BufReader::new(f));
 
     if opt.random {
