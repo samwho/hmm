@@ -1,5 +1,9 @@
 use std::{error, fmt, io};
 
+pub fn from_str(s: &str) -> Error {
+    s.to_owned().into()
+}
+
 #[derive(Debug)]
 pub enum Error {
     Io(io::Error),
@@ -42,6 +46,18 @@ impl fmt::Display for Error {
             Error::Utf8(ref err) => err.fmt(f),
             Error::StringError(ref s) => f.write_str(s),
         }
+    }
+}
+
+impl From<&str> for Error {
+    fn from(s: &str) -> Error {
+        Error::StringError(s.to_owned())
+    }
+}
+
+impl From<String> for Error {
+    fn from(s: String) -> Error {
+        Error::StringError(s)
     }
 }
 

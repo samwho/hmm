@@ -1,4 +1,4 @@
-use super::{entry::Entry, error::Error, seek, Result};
+use super::{entry::Entry, seek, Result};
 use chrono::prelude::*;
 use std::cmp::Ordering;
 use std::convert::TryInto;
@@ -68,10 +68,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
 
         let mut csv_reader = self.csv_reader_builder.from_reader(self.buf.as_bytes());
         if !csv_reader.read_record(&mut self.string_record)? {
-            return Err(Error::StringError(format!(
-                "failed to parse \"{}\" as CSV row",
-                self.buf
-            )));
+            return Err(format!("failed to parse \"{}\" as CSV row", self.buf).into());
         }
 
         Ok(Some((&self.string_record).try_into()?))

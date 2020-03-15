@@ -1,4 +1,7 @@
-use super::{error::Error, Result};
+use super::{
+    error::{self, Error},
+    Result,
+};
 use chrono::prelude::*;
 use csv::StringRecord;
 use std::convert::{TryFrom, TryInto};
@@ -50,12 +53,8 @@ impl TryFrom<&StringRecord> for Entry {
     type Error = Error;
 
     fn try_from(sr: &StringRecord) -> Result<Self> {
-        let date = sr
-            .get(0)
-            .ok_or_else(|| Error::StringError("malformed CSV".to_owned()))?;
-        let msg = sr
-            .get(1)
-            .ok_or_else(|| Error::StringError("malformed CSV".to_owned()))?;
+        let date = sr.get(0).ok_or_else(|| error::from_str("malformed CSV"))?;
+        let msg = sr.get(1).ok_or_else(|| error::from_str("malformed CSV"))?;
 
         Ok(Entry {
             datetime: chrono::DateTime::parse_from_rfc3339(date)?,
@@ -74,10 +73,7 @@ impl TryFrom<&str> for Entry {
 
         let mut r = reader_builder.from_reader(s.as_bytes());
         if !r.read_record(&mut record)? {
-            return Err(Error::StringError(format!(
-                "error parsing \"{}\" as a CSV row",
-                s
-            )));
+            return Err(format!("error parsing \"{}\" as a CSV row", s).into());
         }
 
         (&record).try_into()

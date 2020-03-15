@@ -1,5 +1,5 @@
 use chrono::prelude::*;
-use hmmcli::{entries::Entries, error::Error, format::Format, Result};
+use hmmcli::{entries::Entries, format::Format, Result};
 use rand::distributions::{Distribution, Uniform};
 use std::cmp::Ordering;
 use std::io::BufReader;
@@ -16,11 +16,11 @@ struct Opt {
     path: Option<PathBuf>,
 
     /// How to format entry output. hmm uses Handlebars as a template format, see
-    /// https://handlebarsjs.com/guide/ for information on how to use them. The values
-    /// "datetime" and "message" are passed in.
+    /// https://handlebarsjs.com/guide/ for information on how to use them. The
+    /// values "datetime" and "message" are passed in.
     #[structopt(
         long = "format",
-        default_value = "{{ color \"blue\" (strftime \"%Y-%m-%d %H:%M:%S\" datetime) }}\n{{ indent message }}\n"
+        default_value = "{{ color \"blue\" (strftime \"%Y-%m-%d %H:%M:%S\" datetime) }}\n{{ indent message }}"
     )]
     format: String,
 
@@ -34,9 +34,10 @@ struct Opt {
     #[structopt(long = "random")]
     random: bool,
 
-    /// The number of entries to print. If a start and end date have been specified,
-    /// this will print the first N of that range. In ascending order, this is the first
-    /// N entries chronologically, and in descending order it will be the last N entries.
+    /// The number of entries to print. If a start and end date have been
+    /// specified, this will print the first N of that range. In ascending order,
+    /// this is the first N entries chronologically, and in descending order it
+    /// will be the last N entries.
     #[structopt(short = "n")]
     num_entries: Option<i64>,
 
@@ -52,14 +53,19 @@ struct Opt {
     #[structopt(short = "e", long = "end", parse(try_from_str = parse_date_arg))]
     end: Option<DateTime<FixedOffset>>,
 
-    /// Only print entries that contain this substring exactly.
+    /// Only print entries that contain this substring exactly. Cannot be used
+    /// with --regex.
     #[structopt(long = "contains")]
     contains: Option<String>,
+
+    /// Only print entries that match this regular expression. Cannot be used with
+    /// --contains.
+    #[structopt(long = "regex")]
+    regex: Option<String>,
 }
 
 fn main() {
-    let opt = Opt::from_args();
-    if let Err(e) = app(opt) {
+    if let Err(e) = app(Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);
     }
@@ -79,11 +85,12 @@ fn app(opt: Opt) -> Result<()> {
     let f = match fopts.open(&path) {
         Ok(f) => f,
         Err(e) => {
-            return Err(Error::StringError(format!(
+            return Err(format!(
                 "Couldn't open or create file at {}: {}",
                 path.to_string_lossy(),
                 e
-            )))
+            )
+            .into());
         }
     };
 
@@ -97,10 +104,12 @@ fn app(opt: Opt) -> Result<()> {
         return Ok(());
     }
 
+    if opt.regex.is_some() && opt.contains.is_some() {
+        return Err("You can only specify one of --contains and --regex".into());
+    }
+
     if opt.num_entries.is_some() && opt.num_entries.unwrap() < 1 {
-        return Err(Error::StringError(
-            "-n must be greater than or equal to 1".to_owned(),
-        ));
+        return Err("-n must be greater than or equal to 1".into());
     }
 
     let mut entries_printed = 0;
@@ -222,7 +231,7 @@ fn parse_date_arg(s: &str) -> Result<DateTime<FixedOffset>> {
         return Ok(d.into());
     }
 
-    Err(Error::StringError(format!("unrecognised date format: \"{}\", accepted formats include things like:\n  - 2012\n  - 2012-01\n  - 2012-01-24\n  - 2012-01-24T16\n  - 2012-01-24T16:20\n  - 2012-01-24T16:20:30", s)))
+    Err(format!("unrecognised date format: \"{}\", accepted formats include things like:\n  - 2012\n  - 2012-01\n  - 2012-01-24\n  - 2012-01-24T16\n  - 2012-01-24T16:20\n  - 2012-01-24T16:20:30", s).into())
 }
 
 fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
@@ -307,6 +316,7 @@ mod tests {
     #[test_case(vec!["--path", "/this/path/does/not/exist"],        "Couldn't open or create file at")]
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"],                              "Found argument '--nonexistent' which wasn't expected")]
+    #[test_case(vec!["--contains", "a", "--regex", "b"],            "You can only specify one of --contains and --regex")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n=-1"],                       "-n must be greater than or equal to 1")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n", "0"],                     "-n must be greater than or equal to 1")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--start", "nope"],             "unrecognised date format")]

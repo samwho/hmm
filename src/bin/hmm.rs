@@ -1,6 +1,6 @@
 use chrono::prelude::*;
 use fs2::FileExt;
-use hmmcli::{entries::Entries, entry::Entry, error::Error, Result};
+use hmmcli::{entries::Entries, entry::Entry, Result};
 use std::io::{BufReader, BufWriter, Read};
 use std::path::PathBuf;
 use std::process::{exit, Command};
@@ -28,8 +28,7 @@ struct Opt {
 }
 
 fn main() {
-    let opt = Opt::from_args();
-    if let Err(e) = app(opt) {
+    if let Err(e) = app(Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);
     }
@@ -48,20 +47,19 @@ fn app(opt: Opt) -> Result<()> {
     let mut f = match fopts.open(&path) {
         Ok(f) => f,
         Err(e) => {
-            return Err(Error::StringError(format!(
+            return Err(format!(
                 "Couldn't open or create file at {}: {}",
                 path.to_string_lossy(),
                 e
-            )))
+            )
+            .into())
         }
     };
 
     let mut msg = itertools::join(opt.message, " ");
     if msg.is_empty() {
         if opt.editor.is_none() {
-            return Err(Error::StringError(
-                "Unable to find an editor, set your EDITOR environment variable".to_owned(),
-            ));
+            return Err("Unable to find an editor, set your EDITOR environment variable".into());
         }
         msg = compose_entry(&opt.editor.unwrap())?;
     }
@@ -75,7 +73,7 @@ fn app(opt: Opt) -> Result<()> {
         let entry = entries.prev_entry()?.unwrap();
 
         if entry.datetime() > &Utc::now() {
-            return Err(Error::StringError("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".to_owned()));
+            return Err("clock skew detected, writing an entry now would break the ordering of your hmm file, please try again in a moment".into());
         }
 
         entries.seek_to_end()?;
@@ -100,9 +98,7 @@ fn compose_entry(editor: &str) -> Result<String> {
     let status = Command::new(editor).arg(path).status()?;
 
     if !status.success() {
-        return Err(Error::StringError(
-            "something went wrong composing entry, please try again".to_owned(),
-        ));
+        return Err("something went wrong composing entry, please try again".into());
     }
 
     let mut s = String::new();
