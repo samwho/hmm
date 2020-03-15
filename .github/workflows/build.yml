@@ -11,9 +11,26 @@ on:
       - "**.md"
 
 jobs:
+  # Ensure that the project could be successfully compiled
+  cargo_check:
+    name: Check Code Compiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all
+
   # Run the `rustfmt` code formatter
   rustfmt:
     name: Rustfmt [Formatter]
+    needs: cargo_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -32,6 +49,7 @@ jobs:
   # Run the `clippy` linting tool
   clippy:
     name: Clippy [Linter]
+    needs: cargo_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -49,6 +67,7 @@ jobs:
   # Run a security audit on dependencies
   cargo_audit:
     name: Cargo Audit [Security]
+    needs: cargo_check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -62,24 +81,9 @@ jobs:
         with:
           command: audit
           
-  # Ensure that the project could be successfully compiled
-  cargo_check:
-    name: Compile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all
-
   test:
-    needs: [cargo_check]
+    needs: [cargo_check, cargo_audit, clippy]
+    name: Tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -98,24 +102,26 @@ jobs:
         with:
           command: test
 
-  # Publish starship to Crates.io
-  # cargo_publish:
-  #   if: startsWith(github.ref, 'refs/tags/v')
-  #   name: Publish Cargo Package
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: actions-rs/toolchain@v1
-  #       with:
-  #         profile: minimal
-  #         toolchain: stable
-  #         override: true
-  #     - run: cargo login $CRATES_IO_TOKEN
-  #     - run: cargo publish
-  #   env:
-  #     CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+  Publish starship to Crates.io
+  cargo_publish:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Publish Cargo Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - run: cargo login $CRATES_IO_TOKEN
+      - run: cargo publish
+    env:
+      CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
   github_build:
+    needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     name: Build release binaries
     strategy:
