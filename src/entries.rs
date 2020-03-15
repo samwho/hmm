@@ -102,11 +102,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         let mut end = file_size;
         let mut start = self.f.seek(SeekFrom::Start(0))?;
 
-        loop {
-            if end <= start {
-                break;
-            }
-
+        while start < end {
             let cur = start + (end - start) / 2;
 
             let entry = match self.at(cur)? {
@@ -119,13 +115,10 @@ impl<T: Seek + Read + BufRead> Entries<T> {
                 None => break,
             };
 
-            match entry.datetime().cmp(&date) {
-                Ordering::Equal | Ordering::Greater => {
-                    end = cur - 1;
-                }
-                Ordering::Less => {
-                    start = cur + 1;
-                }
+            if entry.datetime() >= date {
+                end = cur - 1;
+            } else {
+                start = cur + 1;
             }
         }
 

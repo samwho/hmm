@@ -2,7 +2,7 @@ use chrono::prelude::*;
 use hmmcli::{entries::Entries, error::Error, format::Format, Result};
 use rand::distributions::{Distribution, Uniform};
 use std::cmp::Ordering;
-use std::io::{stderr, BufReader, Write};
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -60,9 +60,7 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
     if let Err(e) = app(opt) {
-        if let Err(write_e) = writeln!(&mut stderr(), "{}", e) {
-            panic!(write_e);
-        }
+        eprintln!("{}", e);
         exit(1);
     }
 }
@@ -241,6 +239,7 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, prelude::*};
+    use std::io::Write;
     use std::path::PathBuf;
     use std::process::Command;
     use tempfile::NamedTempFile;

@@ -1,7 +1,7 @@
 use chrono::prelude::*;
 use fs2::FileExt;
 use hmmcli::{entries::Entries, entry::Entry, error::Error, Result};
-use std::io::{stderr, BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Read};
 use std::path::PathBuf;
 use std::process::{exit, Command};
 use structopt::StructOpt;
@@ -30,9 +30,7 @@ struct Opt {
 fn main() {
     let opt = Opt::from_args();
     if let Err(e) = app(opt) {
-        if let Err(write_e) = writeln!(&mut stderr(), "{}", e) {
-            panic!(write_e);
-        }
+        eprintln!("{}", e);
         exit(1);
     }
 }

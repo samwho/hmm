@@ -37,6 +37,12 @@ note taking in the terminal with the ability to search later.
 
 I plan to upload `hmm` to various package repositories, but until then...
 
+## Arch Linux (AUR)
+
+`hmm` is in the AUR, and can be installed with an AUR helper such as `yay`:
+
+    yay -S hmm-bin
+
 ## Using cargo
 
 [Install Rust][2], then run:
