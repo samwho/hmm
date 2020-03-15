@@ -10,11 +10,12 @@ pub enum Error {
     Csv(csv::Error),
     ChronoParse(chrono::format::ParseError),
     SerdeJson(serde_json::error::Error),
-    TemplateError(handlebars::TemplateError),
-    TemplateRenderError(handlebars::TemplateRenderError),
-    RenderError(handlebars::RenderError),
+    Template(handlebars::TemplateError),
+    TemplateRender(handlebars::TemplateRenderError),
+    Render(handlebars::RenderError),
     Utf8(std::string::FromUtf8Error),
-    StringError(String),
+    Regex(regex::Error),
+    String(String),
 }
 
 impl error::Error for Error {
@@ -24,11 +25,12 @@ impl error::Error for Error {
             Error::Csv(ref err) => Some(err),
             Error::ChronoParse(ref err) => Some(err),
             Error::SerdeJson(ref err) => Some(err),
-            Error::TemplateError(ref err) => Some(err),
-            Error::TemplateRenderError(ref err) => Some(err),
-            Error::RenderError(ref err) => Some(err),
+            Error::Template(ref err) => Some(err),
+            Error::TemplateRender(ref err) => Some(err),
+            Error::Render(ref err) => Some(err),
             Error::Utf8(ref err) => Some(err),
-            Error::StringError(_) => None,
+            Error::Regex(ref err) => Some(err),
+            Error::String(_) => None,
         }
     }
 }
@@ -40,24 +42,31 @@ impl fmt::Display for Error {
             Error::Csv(ref err) => err.fmt(f),
             Error::ChronoParse(ref err) => err.fmt(f),
             Error::SerdeJson(ref err) => err.fmt(f),
-            Error::TemplateError(ref err) => err.fmt(f),
-            Error::TemplateRenderError(ref err) => err.fmt(f),
-            Error::RenderError(ref err) => err.fmt(f),
+            Error::Template(ref err) => err.fmt(f),
+            Error::TemplateRender(ref err) => err.fmt(f),
+            Error::Render(ref err) => err.fmt(f),
             Error::Utf8(ref err) => err.fmt(f),
-            Error::StringError(ref s) => f.write_str(s),
+            Error::Regex(ref err) => err.fmt(f),
+            Error::String(ref s) => f.write_str(s),
         }
     }
 }
 
 impl From<&str> for Error {
     fn from(s: &str) -> Error {
-        Error::StringError(s.to_owned())
+        Error::String(s.to_owned())
     }
 }
 
 impl From<String> for Error {
     fn from(s: String) -> Error {
-        Error::StringError(s)
+        Error::String(s)
+    }
+}
+
+impl From<regex::Error> for Error {
+    fn from(err: regex::Error) -> Error {
+        Error::Regex(err)
     }
 }
 
@@ -69,19 +78,19 @@ impl From<std::string::FromUtf8Error> for Error {
 
 impl From<handlebars::RenderError> for Error {
     fn from(err: handlebars::RenderError) -> Error {
-        Error::RenderError(err)
+        Error::Render(err)
     }
 }
 
 impl From<handlebars::TemplateRenderError> for Error {
     fn from(err: handlebars::TemplateRenderError) -> Error {
-        Error::TemplateRenderError(err)
+        Error::TemplateRender(err)
     }
 }
 
 impl From<handlebars::TemplateError> for Error {
     fn from(err: handlebars::TemplateError) -> Error {
-        Error::TemplateError(err)
+        Error::Template(err)
     }
 }
 

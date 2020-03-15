@@ -108,6 +108,11 @@ fn app(opt: Opt) -> Result<()> {
         return Err("You can only specify one of --contains and --regex".into());
     }
 
+    let regex = match opt.regex {
+        None => None,
+        Some(s) => Some(regex::Regex::new(&s)?),
+    };
+
     if opt.num_entries.is_some() && opt.num_entries.unwrap() < 1 {
         return Err("-n must be greater than or equal to 1".into());
     }
@@ -168,6 +173,10 @@ fn app(opt: Opt) -> Result<()> {
                         continue;
                     }
 
+                    if regex.is_some() && !regex.as_ref().unwrap().is_match(entry.message()) {
+                        continue;
+                    }
+
                     println!("{}", formatter.format_entry(&entry)?);
                     entries_printed += 1;
                 }
@@ -198,6 +207,10 @@ fn app(opt: Opt) -> Result<()> {
                     if opt.contains.is_some()
                         && !entry.message().contains(opt.contains.as_ref().unwrap())
                     {
+                        continue;
+                    }
+
+                    if regex.is_some() && !regex.as_ref().unwrap().is_match(entry.message()) {
                         continue;
                     }
 
@@ -305,6 +318,8 @@ mod tests {
     #[test_case(vec!["-n", "1", "--format", "{{ indent message }}"] => "| 1\n")]
     #[test_case(vec!["-n", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
     #[test_case(vec!["--start", "2020-06-13", "--end", "2020-06-14", "--format", "{{ message }}"] => "6\n")]
+    #[test_case(vec!["--contains", "1", "--format", "{{ message }}"] => "1\n")]
+    #[test_case(vec!["--regex", "(1|2)", "--format", "{{ message }}"] => "1\n2\n")]
     #[test_case(vec!["--format", "{{ raw }}"] => TESTDATA)]
     fn test_hmmq(args: Vec<&str>) -> String {
         let path = new_tempfile(TESTDATA);
@@ -317,6 +332,7 @@ mod tests {
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"],                              "Found argument '--nonexistent' which wasn't expected")]
     #[test_case(vec!["--contains", "a", "--regex", "b"],            "You can only specify one of --contains and --regex")]
+    #[test_case(vec!["--regex", "("],                               "regex parse error")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n=-1"],                       "-n must be greater than or equal to 1")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n", "0"],                     "-n must be greater than or equal to 1")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--start", "nope"],             "unrecognised date format")]

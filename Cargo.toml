@@ -33,11 +33,12 @@ structopt = { version = "0.3", default-features = false }
 fs2 = "0.4.3"
 rand = "0.7.3"
 handlebars = "3.0.1"
+regex = "1.3"
 
 [dev-dependencies]
 test-case = "1.0.0"
 assert_cmd = "0.12"
-rusty-hook = "0.10.1"
+rusty-hook = "0.10.3"
 escargot = "0.5"
 
 [profile.release]
