@@ -240,18 +240,18 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{assert::Assert, Command};
+    use assert_cmd::{prelude::*, assert::Assert};
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
+    use std::process::Command;
+
+    fn cmd(name: &str) -> Command {
+        escargot::CargoBuild::new().bin(name).current_release().current_target().run().unwrap().command()
+    }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        Command::cargo_bin("hmmq")
-            .unwrap()
-            .arg("--path")
-            .arg(path.as_os_str())
-            .args(args)
-            .assert()
+        cmd("hmmq").arg("--path").arg(path.as_os_str()).args(args).assert()
     }
 
     fn new_tempfile(content: &str) -> PathBuf {
@@ -304,7 +304,7 @@ mod tests {
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--end", "nope"],               "unrecognised date format")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--format", "{{"],              "invalid handlebars syntax")]
     fn test_hmmq_errors(args: Vec<&str>, error: &str) {
-        let assert = Command::cargo_bin("hmmq").unwrap().args(args).assert();
+        let assert = cmd("hmmq").args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
         assert_eq!(

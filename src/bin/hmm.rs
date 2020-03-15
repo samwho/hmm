@@ -100,21 +100,21 @@ fn compose_entry(editor: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use assert_cmd::{assert::Assert, Command};
+    use assert_cmd::{prelude::*, assert::Assert};
     use hmmcli::entries::Entries;
     use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
+    use std::process::Command;
+
+    fn cmd(name: &str) -> Command {
+        escargot::CargoBuild::new().bin(name).current_release().current_target().run().unwrap().command()
+    }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        Command::cargo_bin("hmm")
-            .unwrap()
-            .arg("--path")
-            .arg(path.as_os_str())
-            .args(args)
-            .assert()
+        cmd("hmm").arg("--path").arg(path.as_os_str()).args(args).assert()
     }
 
     fn new_tempfile_path() -> PathBuf {
@@ -168,7 +168,7 @@ mod tests {
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"], "Found argument '--nonexistent' which wasn't expected")]
     fn test_hmm_errors(args: Vec<&str>, error: &str) {
-        let assert = Command::cargo_bin("hmm").unwrap().args(args).assert();
+        let assert = cmd("hmm").args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
         assert_eq!(
