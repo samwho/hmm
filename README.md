@@ -24,6 +24,12 @@ mind.
         * [Show all entries from a given date](#show-all-entries-from-a-given-date)
         * [Show a random entry](#show-a-random-entry)
     * [Formatting entries](#formatting-entries)
+    * [Benchmarking](#benchmarking)
+        * [Random entries](#random-entries)
+        * [Entries from a given random start date](#entries-from-a-given-random-start-date)
+        * [A large number of entries on a given random start date](#a-large-number-of-entries-on-a-given-random-start-date)
+        * [A large number of entries from a given end date, descending](#a-large-number-of-entries-from-a-given-end-date-descending)
+        * [Printing the whole file](#printing-the-whole-file)
 
 # Comparison to `jrnl`
 
@@ -172,6 +178,59 @@ the default output format specified explicitly:
 The keen reader will notice the `$` before the format argument. This is a bash
 quirk. Without it, the `\n` inside the format argument will print literally
 instead of being interpreted as a newline.
+
+## Benchmarking
+
+I ran some informal benchmarks on my personal machine. I wasn't looking for the
+absolute lowest possible time, but I wanted all operations to feel instant to a
+person using the tool.
+
+I generated a `.hmm` file with 20 million entries in it, with times starting at
+1970-01-01 spaced 1 minute apart. The file came to ~840M, all entries had the
+content `"hello world"`.
+
+### Random entries
+
+    hyperfine 'hmmq --random'
+
+    Benchmark #1: hmmq --random
+      Time (mean ± σ):       0.7 ms ±   0.1 ms    [User: 0.7 ms, System: 0.6 ms]
+      Range (min … max):     0.5 ms …   1.8 ms    1179 runs
+
+### Entries from a given random start date
+
+    hyperfine 'hmmq --start $(date -d @$(shuf -i 0 -1200000000 -n1) --iso-8601) -n 1'
+
+    Benchmark #1: hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1
+      Time (mean ± σ):       3.3 ms ±   0.3 ms    [User: 2.4 ms, System: 1.2 ms]
+      Range (min … max):     2.9 ms …   5.9 ms    579 runs
+
+### A large number of entries on a given random start date
+
+    hyperfine 'hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000'
+
+    Benchmark #1: hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000
+      Time (mean ± σ):      30.9 ms ±   3.0 ms    [User: 29.1 ms, System: 1.8 ms]
+      Range (min … max):    28.7 ms …  49.0 ms    98 runs
+
+### A large number of entries from a given end date, descending
+
+    hyperfine 'hmmq --end $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000 --descending'
+
+    Benchmark #1: hmmq --end $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000 --descending
+      Time (mean ± σ):     120.5 ms ±   6.0 ms    [User: 50.5 ms, System: 69.6 ms]
+      Range (min … max):   115.6 ms … 138.0 ms    24 runs
+
+"Why is descending order so much slower than ascending?" you might ask.
+At the time of writing, `hmmq` reads all printed entries twice when going
+backwards. It does this because it's simple from an implementation
+perspective. It would be possible to make this faster if the code were
+a bit more complex, but I haven't decided if I want to do that yet.
+
+### Printing the whole file
+
+It ran for a few minutes before I gave up. There's no excellent reason to
+want to do this.
 
 [1]: https://rustup.rs/
 [2]: https://rustup.rs/
