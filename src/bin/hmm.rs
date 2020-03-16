@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use fs2::FileExt;
 use hmmcli::{entries::Entries, entry::Entry, Result};
 use std::io::{BufReader, BufWriter, Read};
+use std::fs::File;
 use std::path::PathBuf;
 use std::process::{exit, Command};
 use structopt::StructOpt;
@@ -11,7 +12,7 @@ use tempfile::NamedTempFile;
 #[structopt(name = "hmm", about = "Command line note taking")]
 struct Opt {
     /// Path to your hmm file, defaults to your default configuration directory,
-    /// ~/.config on *nix systems, %APPDATA% on Windows.
+    /// ~/.config/.hmm on *nix systems, %APPDATA%\.hmm on Windows.
     #[structopt(long = "path")]
     path: Option<PathBuf>,
 
@@ -24,8 +25,9 @@ struct Opt {
     /// Message to add to your hmm journal. Feel free to use quotes or not, but
     /// be wary of how your shell interprets strings. For example, # is often the
     /// beginning of a comment, so anything after it is likely to be ignored.
-    message: Vec<String>,
-}
+    /// Additionally anything beginning with a dash or two dashed may be
+    /// interpreted as an argument, causing the command to error.
+    message: Vec<String>, }
 
 fn main() {
     if let Err(e) = app(Opt::from_args()) {
@@ -43,6 +45,7 @@ fn app(opt: Opt) -> Result<()> {
     fopts.create(true);
     fopts.read(true);
     fopts.write(true);
+    fopts.append(true);
 
     let mut f = match fopts.open(&path) {
         Ok(f) => f,
@@ -92,17 +95,17 @@ fn app(opt: Opt) -> Result<()> {
 }
 
 fn compose_entry(editor: &str) -> Result<String> {
-    let mut f = NamedTempFile::new()?;
-    let path = f.path().as_os_str();
+    let f = NamedTempFile::new()?;
+    let path = f.into_temp_path();
 
-    let status = Command::new(editor).arg(path).status()?;
+    let status = Command::new(editor).arg(&path).status()?;
 
     if !status.success() {
         return Err("something went wrong composing entry, please try again".into());
     }
 
     let mut s = String::new();
-    f.read_to_string(&mut s)?;
+    File::open(path)?.read_to_string(&mut s)?;
     Ok(s)
 }
 
