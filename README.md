@@ -36,9 +36,9 @@ mind.
 Features `jrnl` has that `hmm` doesn't:
 
 - Encryption of your notes.
-- Ability to add note at arbitrary points in the past.
-- In-built notion of "tags."
-- In-built notion of "starring."
+- Ability to add notes at arbitrary points in the past.
+- In-built notion of tags.
+- In-built notion of starring.
 - Ability to edit entries.
 - Ability to parse English dates/times, e.g. "yesterday" and "2 weeks ago."
 
@@ -47,7 +47,7 @@ Features `hmm` has that `jrnl` doesn't:
 - Unambigous date-format.
 - File-format optimised for searching by time.
 - Ability to format entries however you want.
-- No external dependencies, the `hmm` binary is standalone.
+- No external dependencies.
 
 If any of the features `jrnl` has that `hmm` is missing are essential to your
 workflow, `hmm` isn't for you. That said, I am open to feature requests but
@@ -56,7 +56,8 @@ note taking in the terminal with the ability to search later.
 
 # Installation
 
-I plan to upload `hmm` to various package repositories, but until then...
+No support for Homebrew yet, so Mac users will need to go down the `cargo`
+route, but I plan to get it in to the Homebrew repos soon.
 
 ## Arch Linux (AUR)
 
@@ -67,7 +68,7 @@ I plan to upload `hmm` to various package repositories, but until then...
 ## Using cargo
 
 [Install Rust][2], then run:
-    
+
     cargo install hmmcli
 
 Now the `hmm` and `hmmq` binaries should be available in your terminal.
@@ -104,7 +105,7 @@ want.
     hmm
 
 Invoked with no arguments, or just a `--path` argument, `hmm` will open your
-default `EDITOR` to compose an entry. Savings and quitting that editor will
+default `EDITOR` to compose an entry. Saving and quitting that editor will
 then write the note to your `.hmm` file. If you don't have an `EDITOR`
 configured, you can also pass one as a flag:
 
