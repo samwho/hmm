@@ -1,8 +1,8 @@
 use chrono::prelude::*;
 use fs2::FileExt;
 use hmmcli::{entries::Entries, entry::Entry, Result};
-use std::io::{BufReader, BufWriter, Read};
 use std::fs::File;
+use std::io::{BufReader, BufWriter, Read};
 use std::path::PathBuf;
 use std::process::{exit, Command};
 use structopt::StructOpt;
@@ -27,7 +27,8 @@ struct Opt {
     /// beginning of a comment, so anything after it is likely to be ignored.
     /// Additionally anything beginning with a dash or two dashed may be
     /// interpreted as an argument, causing the command to error.
-    message: Vec<String>, }
+    message: Vec<String>,
+}
 
 fn main() {
     if let Err(e) = app(Opt::from_args()) {
