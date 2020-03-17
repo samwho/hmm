@@ -233,7 +233,7 @@ a bit more complex, but I haven't decided if I want to do that yet.
 It ran for a few minutes before I gave up. There's no excellent reason to
 want to do this.
 
-[1]: https://rustup.rs/
+[1]: https://jrnl.sh/
 [2]: https://rustup.rs/
 [3]: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
 [4]: https://handlebarsjs.com/
