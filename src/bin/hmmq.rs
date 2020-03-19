@@ -1,7 +1,5 @@
 use chrono::prelude::*;
 use hmmcli::{entries::Entries, format::Format, Result};
-use rand::distributions::{Distribution, Uniform};
-use std::cmp::Ordering;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::process::exit;
@@ -24,22 +22,18 @@ struct Opt {
     )]
     format: String,
 
-    /// By default, entries are printed in ascending chronological order. This
-    /// flag prints in reverse chronological order.
-    #[structopt(long = "descending")]
-    descending: bool,
-
     /// Print a random entry. Specifying this flag means the other flags will be
     /// ignored.
     #[structopt(long = "random")]
     random: bool,
 
-    /// The number of entries to print. If a start and end date have been
-    /// specified, this will print the first N of that range. In ascending order,
-    /// this is the first N entries chronologically, and in descending order it
-    /// will be the last N entries.
-    #[structopt(short = "n")]
-    num_entries: Option<i64>,
+    /// Print out the first N entries only. Cannot be used alongside --last.
+    #[structopt(long = "first")]
+    first: Option<i64>,
+
+    /// Print out the last N entries only. Cannot be used alongside --first.
+    #[structopt(long = "last")]
+    last: Option<i64>,
 
     /// Date to start printing from, inclusive. The date will be read in your
     /// local time, and can be specified using any subset of an RFC3339 date,
@@ -82,25 +76,19 @@ fn app(opt: Opt) -> Result<()> {
     fopts.read(true);
     fopts.write(true);
 
-    let f = match fopts.open(&path) {
-        Ok(f) => f,
-        Err(e) => {
-            return Err(format!(
-                "Couldn't open or create file at {}: {}",
-                path.to_string_lossy(),
-                e
-            )
-            .into());
-        }
-    };
-
+    let f = fopts.open(&path).map_err(|e| {
+        format!(
+            "Couldn't open or create file at {}: {}",
+            path.to_string_lossy(),
+            e
+        )
+    })?;
     let mut entries = Entries::new(BufReader::new(f));
 
     if opt.random {
-        let mut rng = rand::thread_rng();
-        let range = Uniform::new(0, entries.len()?);
-        let entry = entries.at(range.sample(&mut rng))?.unwrap();
-        println!("{}", formatter.format_entry(&entry)?);
+        if let Some(entry) = entries.rand_entry()? {
+            println!("{}", formatter.format_entry(&entry)?);
+        }
         return Ok(());
     }
 
@@ -113,32 +101,33 @@ fn app(opt: Opt) -> Result<()> {
         Some(s) => Some(regex::Regex::new(&s)?),
     };
 
-    if opt.num_entries.is_some() && opt.num_entries.unwrap() < 1 {
-        return Err("-n must be greater than or equal to 1".into());
+    if opt.first.is_some() && opt.last.is_some() {
+        return Err("cannot specify --first and --last at the same time".into());
     }
 
-    let mut entries_printed = 0;
+    if let Some(first) = opt.first {
+        if first < 1 {
+            return Err("--first must be greater than 0".into());
+        }
+    }
 
-    if opt.descending {
+    if let Some(last) = opt.last {
+        if last < 1 {
+            return Err("--last must be greater than 0".into());
+        }
+    }
+
+    if let Some(ref start_date) = opt.start {
+        entries.seek_to_first(start_date)?;
+    }
+
+    if let Some(last) = opt.last {
         match opt.end {
             Some(ref end_date) => {
-                // Because we want to print in descending order from some end
-                // date, we have to seek to the first occurrence of the end date
-                // and then scan forward incase there are multiple entries with
-                // the same date, exiting the scan when we find an entry with a
-                // later date. In practice this will almost always be a single
-                // scan forward, but it's best to be correct.
+                // Because --end is exclusive, all we need to do is seek to the
+                // first occurrence of a given time and then work backward from
+                // there.
                 entries.seek_to_first(end_date)?;
-                loop {
-                    match entries.next_entry()? {
-                        None => break,
-                        Some(entry) => {
-                            if let Ordering::Greater = entry.datetime().cmp(end_date) {
-                                break;
-                            }
-                        }
-                    }
-                }
             }
             None => {
                 // We read the last entry to get to the end of the file. We'll
@@ -149,76 +138,44 @@ fn app(opt: Opt) -> Result<()> {
             }
         }
 
-        loop {
-            if opt.num_entries.is_some() && entries_printed >= opt.num_entries.unwrap() {
-                break;
-            }
+        // Seek back --last number of lines so the loop begins where we want it
+        // to.
+        for _ in 0..last {
+            entries.seek_to_prev()?;
+        }
+    }
 
-            match entries.prev_entry()? {
-                None => break,
-                Some(entry) => {
-                    // If we've found an entry that occurs before our given start
-                    // date, break out and stop printing.
-                    if opt.start.is_some()
-                        && opt.start.unwrap().cmp(entry.datetime()) == Ordering::Greater
-                    {
-                        break;
-                    }
+    let mut entries_printed = 0;
+    loop {
+        if opt.first.is_some() && entries_printed >= opt.first.unwrap() {
+            break;
+        }
 
-                    // If we've found an entry that does not contain the specified
-                    // string to search for, move to the next loop iteration.
-                    if opt.contains.is_some()
-                        && !entry.message().contains(opt.contains.as_ref().unwrap())
-                    {
-                        continue;
-                    }
-
-                    if regex.is_some() && !regex.as_ref().unwrap().is_match(entry.message()) {
-                        continue;
-                    }
-
-                    println!("{}", formatter.format_entry(&entry)?);
-                    entries_printed += 1;
+        match entries.next_entry()? {
+            None => break,
+            Some(entry) => {
+                // If we've found an entry that occurs on or after our given end
+                // date, break out and stop printing.
+                if opt.end.is_some() && opt.end.as_ref().unwrap() <= entry.datetime() {
+                    break;
                 }
-            };
-        }
-    } else {
-        if let Some(ref start_date) = opt.start {
-            entries.seek_to_first(start_date)?;
-        }
 
-        loop {
-            if opt.num_entries.is_some() && entries_printed >= opt.num_entries.unwrap() {
-                break;
-            }
-
-            match entries.next_entry()? {
-                None => break,
-                Some(entry) => {
-                    // If we've found an entry that occurs after our given end
-                    // date, break out and stop printing.
-                    if opt.end.is_some() && opt.end.unwrap().cmp(entry.datetime()) == Ordering::Less
-                    {
-                        break;
-                    }
-
-                    // If we've found an entry that does not contain the specified
-                    // string to search for, move to the next loop iteration.
-                    if opt.contains.is_some()
-                        && !entry.message().contains(opt.contains.as_ref().unwrap())
-                    {
-                        continue;
-                    }
-
-                    if regex.is_some() && !regex.as_ref().unwrap().is_match(entry.message()) {
-                        continue;
-                    }
-
-                    println!("{}", formatter.format_entry(&entry)?);
-                    entries_printed += 1;
+                // If we've found an entry that does not contain the specified
+                // string to search for, move to the next loop iteration.
+                if opt.contains.is_some()
+                    && !entry.message().contains(opt.contains.as_ref().unwrap())
+                {
+                    continue;
                 }
-            };
-        }
+
+                if regex.is_some() && !regex.as_ref().unwrap().is_match(entry.message()) {
+                    continue;
+                }
+
+                println!("{}", formatter.format_entry(&entry)?);
+                entries_printed += 1;
+            }
+        };
     }
 
     Ok(())
@@ -309,14 +266,16 @@ mod tests {
 2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"
 ";
 
-    #[test_case(vec!["-n", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n")]
-    #[test_case(vec!["-n", "2", "--format", "{{ message }}"] => "1\n2\n" ; "get first two lines")]
-    #[test_case(vec!["-n", "2", "--descending", "--format", "{{ message }}"] => "6\n5\n" ; "get last two lines")]
-    #[test_case(vec!["-n", "2", "--descending", "--end", "2020-05-12T23:28:49", "--format", "{{ message }}"] => "5\n4\n")]
-    #[test_case(vec!["--descending", "--start", "2021", "--end", "2020"] => "")]
+    #[test_case(vec!["--first", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n")]
+    #[test_case(vec!["--first", "2", "--format", "{{ message }}"] => "1\n2\n" ; "get first two lines")]
+    #[test_case(vec!["--first", "1", "--start", "2020-02", "--format", "{{ message }}"] => "2\n")]
+    #[test_case(vec!["--last", "1", "--format", "{{ raw }}"] => "2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"\n")]
+    #[test_case(vec!["--last", "2", "--format", "{{ message }}"] => "5\n6\n" ; "get last two lines")]
     #[test_case(vec!["--start", "2021", "--end", "2020"] => "")]
-    #[test_case(vec!["-n", "1", "--format", "{{ indent message }}"] => "| 1\n")]
-    #[test_case(vec!["-n", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
+    #[test_case(vec!["--first", "1", "--format", "{{ indent message }}"] => "| 1\n")]
+    #[test_case(vec!["--first", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
+    #[test_case(vec!["--start", "2020-01-01T00:01:00", "--end", "2020-03-12T00:00:00", "--format", "{{ message }}"] => "1\n2\n")]
+    #[test_case(vec!["--last", "1", "--end", "2020-03-12T00:00:00", "--format", "{{ message }}"] => "2\n")]
     #[test_case(vec!["--start", "2020-06-13", "--end", "2020-06-14", "--format", "{{ message }}"] => "6\n")]
     #[test_case(vec!["--contains", "1", "--format", "{{ message }}"] => "1\n")]
     #[test_case(vec!["--regex", "(1|2)", "--format", "{{ message }}"] => "1\n2\n")]
@@ -333,8 +292,10 @@ mod tests {
     #[test_case(vec!["--nonexistent"],                              "Found argument '--nonexistent' which wasn't expected")]
     #[test_case(vec!["--contains", "a", "--regex", "b"],            "You can only specify one of --contains and --regex")]
     #[test_case(vec!["--regex", "("],                               "regex parse error")]
-    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n=-1"],                       "-n must be greater than or equal to 1")]
-    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "-n", "0"],                     "-n must be greater than or equal to 1")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--first=-1"],                  "--first must be greater than 0")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--first", "0"],                "--first must be greater than 0")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--last=-1"],                   "--last must be greater than 0")]
+    #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--last", "0"],                 "--last must be greater than 0")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--start", "nope"],             "unrecognised date format")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--end", "nope"],               "unrecognised date format")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--format", "{{"],              "invalid handlebars syntax")]

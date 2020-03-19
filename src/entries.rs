@@ -1,6 +1,6 @@
 use super::{entry::Entry, seek, Result};
 use chrono::prelude::*;
-use std::cmp::Ordering;
+use rand::distributions::{Distribution, Uniform};
 use std::convert::TryInto;
 use std::io::{BufRead, Read, Seek, SeekFrom};
 
@@ -51,6 +51,14 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         Ok(())
     }
 
+    pub fn seek_to_next(&mut self) -> Result<Option<u64>> {
+        seek::start_of_next_line(&mut self.f)
+    }
+
+    pub fn seek_to_prev(&mut self) -> Result<Option<u64>> {
+        seek::start_of_prev_line(&mut self.f)
+    }
+
     pub fn next_entry(&mut self) -> Result<Option<Entry>> {
         self.buf.clear();
         self.f.read_line(&mut self.buf)?;
@@ -74,6 +82,12 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         Ok(Some((&self.string_record).try_into()?))
     }
 
+    pub fn rand_entry(&mut self) -> Result<Option<Entry>> {
+        let mut rng = rand::thread_rng();
+        let range = Uniform::new(0, self.len()?);
+        self.at(range.sample(&mut rng))
+    }
+
     pub fn prev_entry(&mut self) -> Result<Option<Entry>> {
         // This seek takes us to the start of the line that was just read. It
         // will sometimes be None if we're already at the start of the file but
@@ -81,13 +95,13 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         // end of the file, so that when we do read past the end of the file we
         // can again go back and read the last line.
         if self.f.seek(SeekFrom::Current(0))? <= self.len()? {
-            seek::start_of_prev_line(&mut self.f)?;
+            self.seek_to_prev()?;
         }
 
         // This seek takes us to the actual previous entry. If this one returns None
         // it means we're trying to go past the start of the file, and there is no
         // previous entry.
-        if seek::start_of_prev_line(&mut self.f)?.is_none() {
+        if self.seek_to_prev()?.is_none() {
             return Ok(None);
         }
 
@@ -145,7 +159,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
             match self.prev_entry()? {
                 None => break,
                 Some(entry) => {
-                    if let Ordering::Less = entry.datetime().cmp(date) {
+                    if entry.datetime() < date {
                         break;
                     }
                 }
