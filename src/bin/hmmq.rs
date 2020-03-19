@@ -27,6 +27,11 @@ struct Opt {
     #[structopt(long = "random")]
     random: bool,
 
+    /// Print the number of matched entries instead of the content of the entries.
+    /// If you specify --format alongside this flag, it will not do anything.
+    #[structopt(short = "c", long = "count")]
+    count: bool,
+
     /// Print out the first N entries only. Cannot be used alongside --last.
     #[structopt(long = "first")]
     first: Option<i64>,
@@ -145,9 +150,9 @@ fn app(opt: Opt) -> Result<()> {
         }
     }
 
-    let mut entries_printed = 0;
+    let mut count = 0;
     loop {
-        if opt.first.is_some() && entries_printed >= opt.first.unwrap() {
+        if opt.first.is_some() && count >= opt.first.unwrap() {
             break;
         }
 
@@ -172,10 +177,16 @@ fn app(opt: Opt) -> Result<()> {
                     continue;
                 }
 
-                println!("{}", formatter.format_entry(&entry)?);
-                entries_printed += 1;
+                if !opt.count {
+                    println!("{}", formatter.format_entry(&entry)?);
+                }
+                count += 1;
             }
         };
+    }
+
+    if opt.count {
+        println!("{}", count);
     }
 
     Ok(())
@@ -280,6 +291,10 @@ mod tests {
     #[test_case(vec!["--contains", "1", "--format", "{{ message }}"] => "1\n")]
     #[test_case(vec!["--regex", "(1|2)", "--format", "{{ message }}"] => "1\n2\n")]
     #[test_case(vec!["--format", "{{ raw }}"] => TESTDATA)]
+    #[test_case(vec!["--count"] => "6\n")]
+    #[test_case(vec!["--first", "1", "--count"] => "1\n")]
+    #[test_case(vec!["--contains", "4", "--count"] => "1\n")]
+    #[test_case(vec!["--contains", "nope", "--count"] => "0\n")]
     fn test_hmmq(args: Vec<&str>) -> String {
         let path = new_tempfile(TESTDATA);
 
