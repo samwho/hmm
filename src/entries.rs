@@ -7,20 +7,13 @@ use std::io::{BufRead, Read, Seek, SeekFrom};
 pub struct Entries<T: Seek + Read + BufRead> {
     f: T,
     buf: String,
-    csv_reader_builder: csv::ReaderBuilder,
-    string_record: csv::StringRecord,
 }
 
 impl<T: Seek + Read + BufRead> Entries<T> {
     pub fn new(f: T) -> Self {
-        let mut csv_reader_builder = csv::ReaderBuilder::new();
-        csv_reader_builder.has_headers(false);
-
         Entries {
             f,
-            csv_reader_builder,
-            buf: String::new(),
-            string_record: csv::StringRecord::new(),
+            buf: String::with_capacity(4096),
         }
     }
 
@@ -74,12 +67,10 @@ impl<T: Seek + Read + BufRead> Entries<T> {
             return Ok(None);
         }
 
-        let mut csv_reader = self.csv_reader_builder.from_reader(self.buf.as_bytes());
-        if !csv_reader.read_record(&mut self.string_record)? {
-            return Err(format!("failed to parse \"{}\" as CSV row", self.buf).into());
-        }
-
-        Ok(Some((&self.string_record).try_into()?))
+        let row = quick_csv::Csv::from_reader(self.buf.as_bytes())
+            .next()
+            .unwrap()?;
+        Ok(Some((&row).try_into()?))
     }
 
     pub fn rand_entry(&mut self) -> Result<Option<Entry>> {

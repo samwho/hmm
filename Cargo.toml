@@ -21,6 +21,7 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 csv = "1.1"
+quick-csv = "0.1.6"
 chrono = "0.4.11"
 dirs = "2.0.2"
 itertools = "0.9.0"

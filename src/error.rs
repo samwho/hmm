@@ -8,6 +8,7 @@ pub fn from_str(s: &str) -> Error {
 pub enum Error {
     Io(io::Error),
     Csv(csv::Error),
+    QuickCsv(quick_csv::error::Error),
     ChronoParse(chrono::format::ParseError),
     SerdeJson(serde_json::error::Error),
     Template(handlebars::TemplateError),
@@ -23,6 +24,7 @@ impl error::Error for Error {
         match *self {
             Error::Io(ref err) => Some(err),
             Error::Csv(ref err) => Some(err),
+            Error::QuickCsv(ref err) => Some(err),
             Error::ChronoParse(ref err) => Some(err),
             Error::SerdeJson(ref err) => Some(err),
             Error::Template(ref err) => Some(err),
@@ -40,6 +42,7 @@ impl fmt::Display for Error {
         match *self {
             Error::Io(ref err) => err.fmt(f),
             Error::Csv(ref err) => err.fmt(f),
+            Error::QuickCsv(ref err) => err.fmt(f),
             Error::ChronoParse(ref err) => err.fmt(f),
             Error::SerdeJson(ref err) => err.fmt(f),
             Error::Template(ref err) => err.fmt(f),
@@ -103,6 +106,12 @@ impl From<io::Error> for Error {
 impl From<csv::Error> for Error {
     fn from(err: csv::Error) -> Error {
         Error::Csv(err)
+    }
+}
+
+impl From<quick_csv::error::Error> for Error {
+    fn from(err: quick_csv::error::Error) -> Error {
+        Error::QuickCsv(err)
     }
 }
 

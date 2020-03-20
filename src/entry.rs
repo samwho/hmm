@@ -49,6 +49,26 @@ impl Entry {
     }
 }
 
+impl TryFrom<&quick_csv::Row> for Entry {
+    type Error = Error;
+
+    fn try_from(r: &quick_csv::Row) -> Result<Self> {
+        let mut cols = r.columns()?;
+
+        let date = cols
+            .next()
+            .ok_or_else(|| error::from_str("malformed CSV"))?;
+        let msg = cols
+            .next()
+            .ok_or_else(|| error::from_str("malformed CSV"))?;
+
+        Ok(Entry {
+            datetime: chrono::DateTime::parse_from_rfc3339(date)?,
+            message: serde_json::from_str(&msg)?,
+        })
+    }
+}
+
 impl TryFrom<&StringRecord> for Entry {
     type Error = Error;
 
