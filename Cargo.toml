@@ -21,20 +21,22 @@ maintenance = { status = "actively-developed" }
 
 [dependencies]
 csv = "1.1"
-quick-csv = "0.1.6"
-chrono = "0.4.11"
-dirs = "2.0.2"
-itertools = "0.9.0"
+quick-csv = "0.1"
+chrono = "0.4"
+dirs = "2.0"
+itertools = "0.9"
 textwrap = { version = "0.11", features = ["term_size"] }
 colored = "1.9"
-serde = { version = "1.0.104", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3.1.0"
+tempfile = "3.1"
 structopt = { version = "0.3", default-features = false }
-fs2 = "0.4.3"
-rand = "0.7.3"
-handlebars = "3.0.1"
+fs2 = "0.4"
+rand = "0.7"
+handlebars = "3.0"
 regex = "1.3"
+lipsum = "0.6"
+indicatif = "0.14"
 
 [dev-dependencies]
 test-case = "1.0.0"
@@ -45,6 +47,7 @@ escargot = "0.5"
 opt-level = 'z'  # Optimize for size.
 lto = true
 codegen-units = 1
+debug = true
 
 [[bin]]
 name = "hmm"
@@ -53,3 +56,7 @@ path = "src/bin/hmm.rs"
 [[bin]]
 name = "hmmq"
 path = "src/bin/hmmq.rs"
+
+[[bin]]
+name = "hmmdg"
+path = "src/bin/hmmdg.rs"

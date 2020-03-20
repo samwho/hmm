@@ -13,11 +13,12 @@ pub struct Entry {
 }
 
 impl Entry {
+    pub fn new(datetime: DateTime<FixedOffset>, message: String) -> Self {
+        Entry { datetime, message }
+    }
+
     pub fn with_message(message: &str) -> Self {
-        Entry {
-            datetime: Utc::now().into(),
-            message: message.trim().to_owned(),
-        }
+        Self::new(Utc::now().into(), message.trim().to_owned())
     }
 
     pub fn datetime(&self) -> &DateTime<FixedOffset> {
