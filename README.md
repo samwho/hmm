@@ -1,7 +1,7 @@
 [![Build status](https://github.com/samwho/hmm/workflows/Build/badge.svg)](https://github.com/samwho/hmm/actions)
 [![Crates.io](https://img.shields.io/crates/v/hmmcli.svg)](https://crates.io/crates/hmmcli)
 
-`hmm` is a small command-line note taking app written in Rust. Notes are
+`hmm` is a small command-line note taking app written in Rust. Entries are
 written in plain text and indexed by the time they were written.
 
 `hmm` is inspired by [jrnl][1], though with a slightly different use-case in
@@ -34,8 +34,8 @@ mind.
 
 Features `jrnl` has that `hmm` doesn't:
 
-- Encryption of your notes.
-- Ability to add notes at arbitrary points in the past.
+- Encryption of your entries.
+- Ability to add entries at arbitrary points in the past.
 - In-built notion of tags.
 - In-built notion of starring.
 - Ability to edit entries.
@@ -141,13 +141,19 @@ need. All dates are in your local timezone.
 
     hmmq --start 2019 --end 2020
 
-This will show all of your notes from 2019.
+This will show all of your entries from 2019.
+
+### Count entries in a given year
+
+    hmmq --start 2019 --end 2020 --count
+
+This will show you how many entries you made in 2019.
 
 ### Show all entries from a given date
 
     hmmq --start 2020-02-20
 
-This will print all of your notes from the 20th of February 2020.
+This will print all of your entries from the 20th of February 2020.
 
 ### Show a random entry
 
@@ -179,42 +185,20 @@ instead of being interpreted as a newline.
 
 ## Benchmarking
 
-I ran some informal benchmarks on my personal machine. I wasn't looking for the
-absolute lowest possible time, but I wanted all operations to feel instant to a
-person using the tool.
+There's a script in the repository root called `bench.sh` that shows the methodology
+behind the following table if you're interested.
 
-I generated a `.hmm` file with 20 million entries in it, with times starting at
-1970-01-01 spaced 1 minute apart. The file came to ~840M, all entries had the
-content `"hello world"`.
-
-### Random entries
-
-    hyperfine 'hmmq --random'
-
-    Benchmark #1: hmmq --random
-      Time (mean ± σ):       0.7 ms ±   0.1 ms    [User: 0.7 ms, System: 0.6 ms]
-      Range (min … max):     0.5 ms …   1.8 ms    1179 runs
-
-### Entries from a given random start date
-
-    hyperfine 'hmmq --start $(date -d @$(shuf -i 0 -1200000000 -n1) --iso-8601) -n 1'
-
-    Benchmark #1: hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1
-      Time (mean ± σ):       3.3 ms ±   0.3 ms    [User: 2.4 ms, System: 1.2 ms]
-      Range (min … max):     2.9 ms …   5.9 ms    579 runs
-
-### A large number of entries on a given random start date
-
-    hyperfine 'hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000'
-
-    Benchmark #1: hmmq --start $(date -d @$(shuf -i 0-1200000000 -n1) --iso-8601) -n 1000
-      Time (mean ± σ):      30.9 ms ±   3.0 ms    [User: 29.1 ms, System: 1.8 ms]
-      Range (min … max):    28.7 ms …  49.0 ms    98 runs
-
-### Printing the whole file
-
-It ran for a few minutes before I gave up. There's no excellent reason to
-want to do this.
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| `target/release/hmmq --path /tmp/out --random` | 15.5 ± 1.5 | 12.9 | 22.0 | 1.03 ± 0.12 |
+| `target/release/hmmq --path /tmp/out --last 10` | 16.5 ± 1.4 | 14.7 | 24.3 | 1.10 ± 0.12 |
+| `target/release/hmmq --path /tmp/out --first 10` | 15.0 ± 1.0 | 12.9 | 17.7 | 1.00 |
+| `target/release/hmmq --path /tmp/out --start 2019 --first 10` | 18.2 ± 1.0 | 15.8 | 21.6 | 1.22 ± 0.10 |
+| `target/release/hmmq --path /tmp/out --end 2019 --last 10` | 19.7 ± 1.0 | 16.4 | 22.2 | 1.31 ± 0.11 |
+| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-02` | 318.5 ± 16.0 | 306.1 | 418.1 | 21.27 ± 1.73 |
+| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --count` | 337.9 ± 11.6 | 328.7 | 394.5 | 22.56 ± 1.63 |
+| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-06 --contains lorum` | 228.4 ± 12.0 | 217.3 | 282.2 | 15.25 ± 1.26 |
+| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --regex "(lorum\|ipsum)"` | 554.0 ± 25.9 | 529.0 | 684.6 | 36.99 ± 2.92 |
 
 [1]: https://jrnl.sh/
 [2]: https://rustup.rs/

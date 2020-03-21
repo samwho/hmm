@@ -1,22 +1,30 @@
-
 use chrono::{prelude::*, Duration};
 use hmmcli::{entry::Entry, Result};
-use std::io::{BufWriter};
+use std::io::BufWriter;
 use std::path::PathBuf;
-use std::process::{exit};
+use std::process::exit;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "hmm", about = "Command line note taking")]
+#[structopt(name = "hmmdg", about = "Generate valid .hmm files for benchmarking.")]
 struct Opt {
+    /// Path to write the generated .hmm file to. Specifically does not default to the
+    /// usual .hmm file location, and will refuse to run if the file already exists.
     #[structopt(long = "path")]
     path: PathBuf,
 
+    /// How many simulated entries per day you would like to write.
     #[structopt(long = "entries-per-day", default_value = "1440")]
     entries_per_day: u64,
 
+    /// How many days you would like to simulate entries for.
     #[structopt(long = "num-days", default_value = "3650")]
     num_days: u64,
+
+    /// You can optionally supply a fixed message to write for every entry. If this is not
+    /// supplied, a random message is generated for you.
+    #[structopt(long = "message")]
+    message: Option<String>,
 }
 
 fn main() {
@@ -45,19 +53,28 @@ fn app(opt: Opt) -> Result<()> {
 
     let mut w = BufWriter::new(f);
     let now: DateTime<FixedOffset> = Utc::now().into();
-    let start = now.checked_sub_signed(Duration::days(opt.num_days as i64)).unwrap();
+    let start = now
+        .checked_sub_signed(Duration::days(opt.num_days as i64))
+        .unwrap();
     let step = Duration::seconds((24 * 60 * 60) / opt.entries_per_day as i64);
 
     let sty = indicatif::ProgressStyle::default_bar()
-      .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {percent}% {eta_precise}")
-      .progress_chars("##-");
+        .template("[{elapsed_precise}] {wide_bar:.cyan/blue} {pos}/{len} {percent}% {eta_precise}")
+        .progress_chars("##-");
     let pb = indicatif::ProgressBar::new(opt.entries_per_day * opt.num_days);
+    pb.set_draw_delta(opt.entries_per_day * opt.num_days / 1000);
     pb.set_style(sty);
 
     for i in 0..(opt.entries_per_day * opt.num_days) {
-      let t = start.checked_add_signed(step * i as i32).unwrap();
-      Entry::new(t, lipsum::lipsum_words(20)).write(&mut w)?;
-      pb.inc(1);
+        let t = start.checked_add_signed(step * i as i32).unwrap();
+        Entry::new(
+            t,
+            opt.message
+                .clone()
+                .unwrap_or_else(|| lipsum::lipsum_words(20)),
+        )
+        .write(&mut w)?;
+        pb.inc(1);
     }
 
     pb.finish();
