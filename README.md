@@ -21,14 +21,11 @@ mind.
         * [Show the frst 10 entries](#show-the-frst-10-entries)
         * [Show entries on a specific day](#show-entries-on-a-specific-day)
         * [Show entries on a given year](#show-entries-on-a-given-year)
+        * [Count entries in a given year](#count-entries-in-a-given-year)
         * [Show all entries from a given date](#show-all-entries-from-a-given-date)
         * [Show a random entry](#show-a-random-entry)
     * [Formatting entries](#formatting-entries)
     * [Benchmarking](#benchmarking)
-        * [Random entries](#random-entries)
-        * [Entries from a given random start date](#entries-from-a-given-random-start-date)
-        * [A large number of entries on a given random start date](#a-large-number-of-entries-on-a-given-random-start-date)
-        * [Printing the whole file](#printing-the-whole-file)
 
 # Comparison to `jrnl`
 
