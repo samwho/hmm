@@ -98,8 +98,24 @@ fn app(opt: Opt) -> Result<()> {
 fn compose_entry(editor: &str) -> Result<String> {
     let f = NamedTempFile::new()?;
     let path = f.into_temp_path();
+    
+    let args = shellwords::split(editor).map_err(|_| "mismatched quotes in editor command")?;
 
-    let status = Command::new(editor).arg(&path).status()?;
+    let mut cmd = match args.as_slice() {
+        [] => return Err("no editor specified".into()),
+        [cmd] => {
+            let mut c = Command::new(cmd);
+            c.arg(&path);
+            c
+        },
+        [cmd, args @ ..] => {
+            let mut c = Command::new(cmd);
+            c.args(args).arg(&path);
+            c
+        }
+    };
+
+    let status = cmd.status()?;
 
     if !status.success() {
         return Err("something went wrong composing entry, please try again".into());
@@ -144,10 +160,13 @@ mod tests {
         NamedTempFile::new().unwrap().keep().unwrap().1
     }
 
-    #[test_case(vec!["hello world"]      => "hello world"   ; "single argument, single line entry")]
-    #[test_case(vec!["hello", "world"]   => "hello world"   ; "multiple argument, single line entry")]
-    #[test_case(vec!["hello\nworld"]     => "hello\nworld"  ; "single argument, multiple line entry")]
-    #[test_case(vec!["hello\n", "world"] => "hello\n world" ; "multiple argument, multiple line entry")]
+    #[test_case(vec!["hello world"]               => "hello world"   ; "single argument, single line entry")]
+    #[test_case(vec!["hello", "world"]            => "hello world"   ; "multiple argument, single line entry")]
+    #[test_case(vec!["hello\nworld"]              => "hello\nworld"  ; "single argument, multiple line entry")]
+    #[test_case(vec!["hello\n", "world"]          => "hello\n world" ; "multiple argument, multiple line entry")]
+    #[test_case(vec!["--editor", "cat"]           => ""              ; "the editor argument works")]
+
+    #[test_case(vec!["--editor", "perl -e \"my $f = $ARGV[0]; open(my $fh, '>', $f) or die 'could not open file'; print $fh 'hello world'\""]  => "hello world" ; "the editor argument actually creates entries")]
     fn test_hmm_single_invocation(args: Vec<&str>) -> String {
         let path = new_tempfile_path();
         let assert = run_with_path(&path, args);
