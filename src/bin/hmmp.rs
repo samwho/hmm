@@ -5,7 +5,10 @@ use std::process::exit;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "hmmp", about = "Pipe hmm entries to this binary to format them")]
+#[structopt(
+    name = "hmmp",
+    about = "Pipe hmm entries to this binary to format them"
+)]
 struct Opt {
     /// How to format entry output. hmm uses Handlebars as a template format, see
     /// https://handlebarsjs.com/guide/ for information on how to use them. The
