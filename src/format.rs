@@ -133,7 +133,7 @@ mod tests {
         Format::with_template(template)
             .unwrap()
             .format_entry(&Entry::new(
-                Utc.ymd(2020, 01, 02).and_hms(03, 04, 05).into(),
+                Utc.ymd(2020, 1, 2).and_hms(3, 4, 5).into(),
                 "hello world".to_owned(),
             ))
             .unwrap()
