@@ -98,7 +98,7 @@ fn app(opt: Opt) -> Result<()> {
 fn compose_entry(editor: &str) -> Result<String> {
     let f = NamedTempFile::new()?;
     let path = f.into_temp_path();
-    
+
     let args = shellwords::split(editor).map_err(|_| "mismatched quotes in editor command")?;
 
     let mut cmd = match args.as_slice() {
@@ -107,7 +107,7 @@ fn compose_entry(editor: &str) -> Result<String> {
             let mut c = Command::new(cmd);
             c.arg(&path);
             c
-        },
+        }
         [cmd, args @ ..] => {
             let mut c = Command::new(cmd);
             c.args(args).arg(&path);
@@ -130,14 +130,14 @@ fn compose_entry(editor: &str) -> Result<String> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, prelude::*};
+    use escargot::{CargoBuild, CargoRun};
     use hmmcli::entries::Entries;
+    use lazy_static::lazy_static;
     use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;
     use tempfile::NamedTempFile;
     use test_case::test_case;
-    use lazy_static::lazy_static;
-    use escargot::{CargoRun, CargoBuild};
 
     lazy_static! {
         static ref HMM: CargoRun = CargoBuild::new()
@@ -165,7 +165,6 @@ mod tests {
     #[test_case(vec!["hello\nworld"]              => "hello\nworld"  ; "single argument, multiple line entry")]
     #[test_case(vec!["hello\n", "world"]          => "hello\n world" ; "multiple argument, multiple line entry")]
     #[test_case(vec!["--editor", "cat"]           => ""              ; "the editor argument works")]
-
     #[test_case(vec!["--editor", "perl -e \"my $f = $ARGV[0]; open(my $fh, '>', $f) or die 'could not open file'; print $fh 'hello world'\""]  => "hello world" ; "the editor argument actually creates entries")]
     fn test_hmm_single_invocation(args: Vec<&str>) -> String {
         let path = new_tempfile_path();
