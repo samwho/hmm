@@ -1,5 +1,6 @@
 use chrono::{prelude::*, Duration};
 use hmmcli::{entry::Entry, Result};
+use human_panic::setup_panic;
 use std::io::BufWriter;
 use std::path::PathBuf;
 use std::process::exit;
@@ -28,6 +29,8 @@ struct Opt {
 }
 
 fn main() {
+    setup_panic!();
+
     if let Err(e) = app(Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);

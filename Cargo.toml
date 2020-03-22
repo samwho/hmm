@@ -39,6 +39,8 @@ lipsum = "0.6"
 indicatif = "0.14"
 lazy_static = "1"
 shellwords = "1"
+termimad = "0.8"
+human-panic = "1"
 
 [dev-dependencies]
 test-case = "1.0.0"
@@ -61,3 +63,7 @@ path = "src/bin/hmmq.rs"
 [[bin]]
 name = "hmmdg"
 path = "src/bin/hmmdg.rs"
+
+[[bin]]
+name = "hmmp"
+path = "src/bin/hmmp.rs"

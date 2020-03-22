@@ -1,6 +1,8 @@
 use chrono::prelude::*;
 use hmmcli::{entries::Entries, format::Format, Result};
-use std::io::BufReader;
+use human_panic::setup_panic;
+use std::fs::File;
+use std::io::{BufReader, Read};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::StructOpt;
@@ -18,9 +20,14 @@ struct Opt {
     /// values "datetime" and "message" are passed in.
     #[structopt(
         long = "format",
-        default_value = "{{ color \"blue\" (strftime \"%Y-%m-%d %H:%M:%S\" datetime) }}\n{{ indent message }}"
+        default_value = "╭ {{ color \"blue\" (strftime \"%Y-%m-%d %H:%M\" datetime) }}\n{{ indent (markdown message) }}╰─────────────────"
     )]
     format: String,
+
+    /// Path to a file containing a Handlebar template to use as --format. If both
+    /// --format-file and --format are supplied, --format-file takes precedence.
+    #[structopt(long = "format-file")]
+    format_file: Option<PathBuf>,
 
     /// Print a random entry. Specifying this flag means the other flags will be
     /// ignored.
@@ -70,6 +77,8 @@ struct Opt {
 }
 
 fn main() {
+    setup_panic!();
+
     if let Err(e) = app(Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);
@@ -77,7 +86,15 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let mut formatter = Format::with_template(&opt.format)?;
+    let mut formatter = if let Some(path) = opt.format_file {
+        let mut f = File::open(path)?;
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)?;
+        Format::with_template(&contents)?
+    } else {
+        Format::with_template(&opt.format)?
+    };
+
     let path = opt
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
@@ -293,7 +310,7 @@ mod tests {
     #[test_case(vec!["--last", "1", "--raw"] => "2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"\n")]
     #[test_case(vec!["--last", "2", "--format", "{{ message }}"] => "5\n6\n" ; "get last two lines")]
     #[test_case(vec!["--start", "2021", "--end", "2020"] => "")]
-    #[test_case(vec!["--first", "1", "--format", "{{ indent message }}"] => "| 1\n")]
+    #[test_case(vec!["--first", "1", "--format", "{{ indent message }}"] => "│ 1\n")]
     #[test_case(vec!["--first", "1", "--format", "{{ strftime \"%Y-%m-%d\" datetime }}"] => "2020-01-01\n")]
     #[test_case(vec!["--start", "2020-01-01T00:01:00", "--end", "2020-03-12T00:00:00", "--format", "{{ message }}"] => "1\n2\n")]
     #[test_case(vec!["--last", "1", "--end", "2020-03-12T00:00:00", "--format", "{{ message }}"] => "2\n")]

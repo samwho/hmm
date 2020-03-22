@@ -1,4 +1,5 @@
 use hmmcli::{entry::Entry, format::Format, Result};
+use human_panic::setup_panic;
 use std::convert::TryInto;
 use std::io::{stdin, BufRead};
 use std::process::exit;
@@ -21,6 +22,8 @@ struct Opt {
 }
 
 fn main() {
+    setup_panic!();
+
     if let Err(e) = app(Opt::from_args(), stdin().lock()) {
         eprintln!("{}", e);
         exit(1);

@@ -20,6 +20,7 @@ impl<'a> Format<'a> {
         renderer.register_helper("indent", Box::new(IndentHelper::new()));
         renderer.register_helper("strftime", Box::new(StrftimeHelper {}));
         renderer.register_helper("color", Box::new(ColorHelper {}));
+        renderer.register_helper("markdown", Box::new(MarkdownHelper {}));
 
         Ok(Format {
             renderer,
@@ -44,8 +45,8 @@ struct IndentHelper<'a> {
 impl<'a> IndentHelper<'a> {
     fn new() -> Self {
         let wrapper = textwrap::Wrapper::with_termwidth()
-            .initial_indent("| ")
-            .subsequent_indent("| ");
+            .initial_indent("│ ")
+            .subsequent_indent("│ ");
         IndentHelper { wrapper }
     }
 }
@@ -100,5 +101,41 @@ impl HelperDef for ColorHelper {
         let color = h.param(0).unwrap().value().render();
         let s = h.param(1).unwrap().value().render();
         Ok(out.write(&format!("{}", s.color(color)))?)
+    }
+}
+
+struct MarkdownHelper {}
+
+impl HelperDef for MarkdownHelper {
+    fn call<'reg: 'rc, 'rc>(
+        &self,
+        h: &Helper,
+        _: &Handlebars,
+        _: &Context,
+        _: &mut RenderContext,
+        out: &mut dyn Output,
+    ) -> HelperResult {
+        let s = h.param(0).unwrap().value().render();
+        Ok(out.write(&format!("{}", termimad::text(&s)))?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_case::test_case;
+
+    #[test_case("{{ message }}" => "hello world")]
+    #[test_case("{{ color \"blue\" message }}" => "hello world".blue().to_string())]
+    #[test_case("{{ indent message }}" => "│ hello world")]
+    #[test_case("{{ strftime \"%Y-%m-%d %H:%M:%S\" datetime }}" => "2020-01-02 03:04:05")]
+    fn test_format(template: &str) -> String {
+        Format::with_template(template)
+            .unwrap()
+            .format_entry(&Entry::new(
+                Utc.ymd(2020, 01, 02).and_hms(03, 04, 05).into(),
+                "hello world".to_owned(),
+            ))
+            .unwrap()
     }
 }

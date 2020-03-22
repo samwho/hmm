@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 use fs2::FileExt;
 use hmmcli::{entries::Entries, entry::Entry, Result};
+use human_panic::setup_panic;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read};
 use std::path::PathBuf;
@@ -31,6 +32,8 @@ struct Opt {
 }
 
 fn main() {
+    setup_panic!();
+
     if let Err(e) = app(Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);
