@@ -143,7 +143,8 @@ jobs:
           cd target/${{ matrix.target }}/release
           strip hmm.exe
           strip hmmq.exe
-          7z a ../../../${{ matrix.name }} hmm.exe hmmq.exe
+          strip hmmp.exe
+          7z a ../../../${{ matrix.name }} hmm.exe hmmq.exe hmmp.exe
           cd -
 
       - name: Prepare build artifacts [-nix]
@@ -152,7 +153,8 @@ jobs:
           cd target/${{ matrix.target }}/release
           strip hmm
           strip hmmq
-          tar czvf ../../../${{ matrix.name }} hmm hmmq
+          strip hmmp
+          tar czvf ../../../${{ matrix.name }} hmm hmmq hmmp
           cd -
 
       - name: Upload build artifact
