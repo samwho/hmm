@@ -195,7 +195,7 @@ variables you have access to inside a template.
 `hmmq` offers some helper functions to make your templates look nicer. Here's
 the default output format specified explicitly:
 
-    hmmq --format $'{{ color "blue" (strftime "%Y-%m-%d %H:%M:%S" datetime) }}\n{{ indent message }}'
+    hmmq --format $'╭ {{ color "blue" (strftime "%Y-%m-%d %H:%M" datetime) }}\n{{ indent (markdown message) }}╰─────────────────"
 
 The keen reader will notice the `$` before the format argument. This is a bash
 quirk. Without it, the `\n` inside the format argument will print literally
@@ -224,15 +224,15 @@ behind the following table if you're interested.
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `target/release/hmmq --path /tmp/out --random` | 15.5 ± 1.5 | 12.9 | 22.0 | 1.03 ± 0.12 |
-| `target/release/hmmq --path /tmp/out --last 10` | 16.5 ± 1.4 | 14.7 | 24.3 | 1.10 ± 0.12 |
-| `target/release/hmmq --path /tmp/out --first 10` | 15.0 ± 1.0 | 12.9 | 17.7 | 1.00 |
-| `target/release/hmmq --path /tmp/out --start 2019 --first 10` | 18.2 ± 1.0 | 15.8 | 21.6 | 1.22 ± 0.10 |
-| `target/release/hmmq --path /tmp/out --end 2019 --last 10` | 19.7 ± 1.0 | 16.4 | 22.2 | 1.31 ± 0.11 |
-| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-02` | 318.5 ± 16.0 | 306.1 | 418.1 | 21.27 ± 1.73 |
-| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --count` | 337.9 ± 11.6 | 328.7 | 394.5 | 22.56 ± 1.63 |
-| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-06 --contains lorum` | 228.4 ± 12.0 | 217.3 | 282.2 | 15.25 ± 1.26 |
-| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --regex "(lorum\|ipsum)"` | 554.0 ± 25.9 | 529.0 | 684.6 | 36.99 ± 2.92 |
+| `target/release/hmmq --path /tmp/out --random` | 13.5 ± 0.8 | 11.9 | 15.4 | 1.00 |
+| `target/release/hmmq --path /tmp/out --last 10` | 15.0 ± 0.8 | 12.8 | 17.1 | 1.11 ± 0.09 |
+| `target/release/hmmq --path /tmp/out --first 10` | 13.6 ± 1.0 | 9.0 | 16.2 | 1.01 ± 0.09 |
+| `target/release/hmmq --path /tmp/out --start 2019 --first 10` | 16.8 ± 0.8 | 15.3 | 19.2 | 1.24 ± 0.09 |
+| `target/release/hmmq --path /tmp/out --end 2019 --last 10` | 18.8 ± 0.9 | 16.4 | 21.4 | 1.40 ± 0.10 |
+| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-02` | 325.6 ± 11.9 | 309.9 | 379.9 | 24.11 ± 1.65 |
+| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --count` | 346.6 ± 13.6 | 336.7 | 427.6 | 25.67 ± 1.79 |
+| `target/release/hmmq --path /tmp/out --start 2019-01 --end 2019-06 --contains lorum` | 232.3 ± 5.2 | 226.4 | 262.7 | 17.21 ± 1.07 |
+| `target/release/hmmq --path /tmp/out --start 2019 --end 2020 --regex "(lorum\|ipsum)"` | 565.3 ± 13.3 | 548.1 | 622.1 | 41.87 ± 2.62 |
 
 [1]: https://jrnl.sh/
 [2]: https://rustup.rs/
