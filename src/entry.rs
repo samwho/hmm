@@ -92,6 +92,14 @@ impl TryFrom<&str> for Entry {
     }
 }
 
+impl TryFrom<String> for Entry {
+    type Error = Error;
+
+    fn try_from(s: String) -> Result<Self> {
+        s.as_str().try_into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,8 +4,11 @@
 `hmm` is a small command-line note taking app written in Rust. Entries are
 written in plain text and indexed by the time they were written.
 
-`hmm` is inspired by [jrnl][1], though with a slightly different use-case in
-mind.
+`hmm` is inspired by [jrnl][1], except with a different use-case in mind.
+Where `jrnl` excels at a journaling use case, where users to can entries
+with arbitrary times and the file format is human-readable, `hmm` only
+allows you to add an entry at the current time and has a machine-readable
+format that's optimised for fast time-based querying.
 
 * [Comparison to jrnl](#comparison-to-jrnl)
 * [Installation](#installation)
@@ -13,9 +16,11 @@ mind.
     * [Using cargo](#using-cargo)
     * [From source](#from-source)
 * [Usage](#usage)
+* [hmm](#hmm)
     * [Writing an entry from the CLI](#writing-an-entry-from-the-cli)
-    * [Writing an entry to a different file](#writing-an-entry-to-a-different-file)
+    * [Writing an entry to a different .hmm file](#writing-an-entry-to-a-different-hmm-file)
     * [Writing long-form entries in your EDITOR](#writing-long-form-entries-in-your-editor)
+* [hmmq](#hmmq)
     * [Listing your entries](#listing-your-entries)
         * [Show the most recent 10 entries](#show-the-most-recent-10-entries)
         * [Show the frst 10 entries](#show-the-frst-10-entries)
@@ -25,14 +30,15 @@ mind.
         * [Show all entries from a given date](#show-all-entries-from-a-given-date)
         * [Show a random entry](#show-a-random-entry)
     * [Formatting entries](#formatting-entries)
-    * [Benchmarking](#benchmarking)
+* [hmmp](#hmmp)
+* [Benchmarking](#benchmarking)
 
 # Comparison to `jrnl`
 
 Features `jrnl` has that `hmm` doesn't:
 
-- Encryption of your entries.
-- Ability to add entries at arbitrary points in the past.
+- Encryption.
+- Ability to add entries at arbitrary points in time.
 - In-built notion of tags.
 - In-built notion of starring.
 - Ability to edit entries.
@@ -40,15 +46,16 @@ Features `jrnl` has that `hmm` doesn't:
 
 Features `hmm` has that `jrnl` doesn't:
 
-- Unambigous date-format.
+- Unambigous date-format (RFC3339).
 - File-format optimised for searching by time.
 - Ability to format entries however you want.
 - No external dependencies.
+- Lots of flexibility.
 
-If any of the features `jrnl` has that `hmm` is missing are essential to your
-workflow, `hmm` isn't for you. That said, I am open to feature requests but
-very much plan to keep `hmm` focused on the use-case I designed it for: quick
-note taking in the terminal with the ability to search later.
+If you need to add entries at times in the past, or you need encryption, or
+you need your file format to be purely plain text, or you need to edit entries
+after they're written, `hmm` isn't for you. Other than that, I believe `hmm`
+can be made to work exactly how you want it to.
 
 # Installation
 
@@ -79,8 +86,14 @@ Now the `hmm` and `hmmq` binaries should be available in your terminal.
 
 # Usage
 
-`hmm` is split in to two binaries: `hmm` and `hmmq`. The former is writing
-entries, while the latter is for querying them.
+`hmm` is split in to three binaries: `hmm`, `hmmq` and `hmmp`.
+
+- `hmm` is for writing new entries via the CLI.
+- `hmmq` is for querying entries by time and content.
+- `hmmp` is for printing entries if you want to use tools other than
+  `hmmq` to query them.
+
+# `hmm`
 
 ## Writing an entry from the CLI
 
@@ -89,7 +102,7 @@ entries, while the latter is for querying them.
 This will write an entry to the default `.hmm` file location, which is in
 your home directory.
 
-## Writing an entry to a different file
+## Writing an entry to a different `.hmm` file
 
 Your `.hmm` file can be located wherever you want, and named whatever you
 want.
@@ -106,6 +119,14 @@ then write the note to your `.hmm` file. If you don't have an `EDITOR`
 configured, you can also pass one as a flag:
 
     hmm --editor vim
+
+The editor variable can be arbitrarily complex, the only thing to keep in mind
+is that `hmm` will call it with a temporary file as the last argument. It will
+read the contents of that temporary file after your editor command exits
+successfully. If your editor does not exit successfully, nothing is written to
+your `.hmm` file.
+
+# `hmmq`
 
 ## Listing your entries
 
@@ -180,7 +201,23 @@ The keen reader will notice the `$` before the format argument. This is a bash
 quirk. Without it, the `\n` inside the format argument will print literally
 instead of being interpreted as a newline.
 
-## Benchmarking
+# `hmmp`
+
+If you want to use other tools to filter through your `.hmm` file, that's completely
+file and even encouraged. The `hmmp` tool exists to let you pipe filtered `.hmm` file
+contents and have it formatted how you want it.
+
+The following two commands are equivalent:
+
+    tail -n 10 ~/.hmm | hmmp
+    hmmq --last 10
+
+As are the following two:
+
+    tail -n 10 ~/.hmm | hmmp --format "{{ message }}"
+    hmmq --last 10 --format "{{ message }}"
+
+# Benchmarking
 
 There's a script in the repository root called `bench.sh` that shows the methodology
 behind the following table if you're interested.
