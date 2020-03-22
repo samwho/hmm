@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 
 pub struct Format<'a> {
     renderer: Handlebars<'a>,
+    data: BTreeMap<&'static str, String>,
 }
 
 impl<'a> Format<'a> {
@@ -20,17 +21,19 @@ impl<'a> Format<'a> {
         renderer.register_helper("strftime", Box::new(StrftimeHelper {}));
         renderer.register_helper("color", Box::new(ColorHelper {}));
 
-        Ok(Format { renderer })
+        Ok(Format {
+            renderer,
+            data: BTreeMap::new(),
+        })
     }
 
-    pub fn format_entry(&self, entry: &Entry) -> Result<String> {
-        let mut data = BTreeMap::new();
+    pub fn format_entry(&mut self, entry: &Entry) -> Result<String> {
+        self.data.clear();
 
-        data.insert("raw".to_owned(), entry.to_csv_row()?);
-        data.insert("datetime".to_owned(), entry.datetime().to_rfc3339());
-        data.insert("message".to_owned(), entry.message().to_owned());
+        self.data.insert("datetime", entry.datetime().to_rfc3339());
+        self.data.insert("message", entry.message().to_owned());
 
-        Ok(self.renderer.render("template", &data)?)
+        Ok(self.renderer.render("template", &self.data)?)
     }
 }
 

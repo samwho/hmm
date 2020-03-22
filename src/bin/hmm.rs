@@ -118,22 +118,22 @@ mod tests {
     use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;
-    use std::process::Command;
     use tempfile::NamedTempFile;
     use test_case::test_case;
+    use lazy_static::lazy_static;
+    use escargot::{CargoRun, CargoBuild};
 
-    fn cmd(name: &str) -> Command {
-        escargot::CargoBuild::new()
-            .bin(name)
+    lazy_static! {
+        static ref HMM: CargoRun = CargoBuild::new()
+            .bin("hmm")
             .current_release()
             .current_target()
             .run()
-            .unwrap()
-            .command()
+            .unwrap();
     }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        cmd("hmm")
+        HMM.command()
             .arg("--path")
             .arg(path.as_os_str())
             .args(args)
@@ -196,7 +196,7 @@ mod tests {
     #[test_case(vec!["--path", "something", "--path", "something"], "The argument '--path <path>' was provided more than once")]
     #[test_case(vec!["--nonexistent"], "Found argument '--nonexistent' which wasn't expected")]
     fn test_hmm_errors(args: Vec<&str>, error: &str) {
-        let assert = cmd("hmm").args(args).assert();
+        let assert = HMM.command().args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
         assert_eq!(

@@ -28,9 +28,15 @@ struct Opt {
     random: bool,
 
     /// Print the number of matched entries instead of the content of the entries.
-    /// If you specify --format alongside this flag, it will not do anything.
+    /// If you specify --format alongside this flag, it will not do anything. Same
+    /// with --raw.
     #[structopt(short = "c", long = "count")]
     count: bool,
+
+    /// Prints out entries in their raw CSV format. Anything set in --format is
+    /// ignored if you specify this flag.
+    #[structopt(long = "raw")]
+    raw: bool,
 
     /// Print out the first N entries only. Cannot be used alongside --last.
     #[structopt(long = "first")]
@@ -71,7 +77,7 @@ fn main() {
 }
 
 fn app(opt: Opt) -> Result<()> {
-    let formatter = Format::with_template(&opt.format)?;
+    let mut formatter = Format::with_template(&opt.format)?;
     let path = opt
         .path
         .unwrap_or_else(|| dirs::home_dir().unwrap().join(".hmm"));
@@ -178,7 +184,11 @@ fn app(opt: Opt) -> Result<()> {
                 }
 
                 if !opt.count {
-                    println!("{}", formatter.format_entry(&entry)?);
+                    if opt.raw {
+                        print!("{}", entry.to_csv_row()?);
+                    } else {
+                        println!("{}", formatter.format_entry(&entry)?);
+                    }
                 }
                 count += 1;
             }
@@ -229,24 +239,24 @@ fn parse_local_datetime_str(s: &str, format: &str) -> Result<DateTime<Utc>> {
 mod tests {
     use super::*;
     use assert_cmd::{assert::Assert, prelude::*};
+    use escargot::{CargoBuild, CargoRun};
+    use lazy_static::lazy_static;
     use std::io::Write;
     use std::path::PathBuf;
-    use std::process::Command;
     use tempfile::NamedTempFile;
     use test_case::test_case;
 
-    fn cmd(name: &str) -> Command {
-        escargot::CargoBuild::new()
-            .bin(name)
+    lazy_static! {
+        static ref HMMQ: CargoRun = CargoBuild::new()
+            .bin("hmmq")
             .current_release()
             .current_target()
             .run()
-            .unwrap()
-            .command()
+            .unwrap();
     }
 
     fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
-        cmd("hmmq")
+        HMMQ.command()
             .arg("--path")
             .arg(path.as_os_str())
             .args(args)
@@ -277,10 +287,10 @@ mod tests {
 2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"
 ";
 
-    #[test_case(vec!["--first", "1", "--format", "{{ raw }}"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n")]
+    #[test_case(vec!["--first", "1", "--raw"] => "2020-01-01T00:01:00.899849209+00:00,\"\"\"1\"\"\"\n")]
     #[test_case(vec!["--first", "2", "--format", "{{ message }}"] => "1\n2\n" ; "get first two lines")]
     #[test_case(vec!["--first", "1", "--start", "2020-02", "--format", "{{ message }}"] => "2\n")]
-    #[test_case(vec!["--last", "1", "--format", "{{ raw }}"] => "2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"\n")]
+    #[test_case(vec!["--last", "1", "--raw"] => "2020-06-13T10:12:53.353050231+00:00,\"\"\"6\"\"\"\n")]
     #[test_case(vec!["--last", "2", "--format", "{{ message }}"] => "5\n6\n" ; "get last two lines")]
     #[test_case(vec!["--start", "2021", "--end", "2020"] => "")]
     #[test_case(vec!["--first", "1", "--format", "{{ indent message }}"] => "| 1\n")]
@@ -290,7 +300,7 @@ mod tests {
     #[test_case(vec!["--start", "2020-06-13", "--end", "2020-06-14", "--format", "{{ message }}"] => "6\n")]
     #[test_case(vec!["--contains", "1", "--format", "{{ message }}"] => "1\n")]
     #[test_case(vec!["--regex", "(1|2)", "--format", "{{ message }}"] => "1\n2\n")]
-    #[test_case(vec!["--format", "{{ raw }}"] => TESTDATA)]
+    #[test_case(vec!["--raw"] => TESTDATA)]
     #[test_case(vec!["--count"] => "6\n")]
     #[test_case(vec!["--first", "1", "--count"] => "1\n")]
     #[test_case(vec!["--contains", "4", "--count"] => "1\n")]
@@ -315,7 +325,7 @@ mod tests {
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--end", "nope"],               "unrecognised date format")]
     #[test_case(vec!["--path", new_tempfile("").to_str().unwrap(),  "--format", "{{"],              "invalid handlebars syntax")]
     fn test_hmmq_errors(args: Vec<&str>, error: &str) {
-        let assert = cmd("hmmq").args(args).assert();
+        let assert = HMMQ.command().args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
         assert_eq!(

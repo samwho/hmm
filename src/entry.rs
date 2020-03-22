@@ -50,10 +50,10 @@ impl Entry {
     }
 }
 
-impl TryFrom<&quick_csv::Row> for Entry {
+impl TryFrom<quick_csv::Row> for Entry {
     type Error = Error;
 
-    fn try_from(r: &quick_csv::Row) -> Result<Self> {
+    fn try_from(r: quick_csv::Row) -> Result<Self> {
         let mut cols = r.columns()?;
 
         let date = cols
@@ -88,16 +88,7 @@ impl TryFrom<&str> for Entry {
     type Error = Error;
 
     fn try_from(s: &str) -> Result<Self> {
-        let mut record = csv::StringRecord::new();
-        let mut reader_builder = csv::ReaderBuilder::new();
-        reader_builder.has_headers(false);
-
-        let mut r = reader_builder.from_reader(s.as_bytes());
-        if !r.read_record(&mut record)? {
-            return Err(format!("error parsing \"{}\" as a CSV row", s).into());
-        }
-
-        (&record).try_into()
+        quick_csv::Csv::from_string(s).next().unwrap()?.try_into()
     }
 }
 

@@ -70,7 +70,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         let row = quick_csv::Csv::from_reader(self.buf.as_bytes())
             .next()
             .unwrap()?;
-        Ok(Some((&row).try_into()?))
+        Ok(Some(row.try_into()?))
     }
 
     pub fn rand_entry(&mut self) -> Result<Option<Entry>> {
