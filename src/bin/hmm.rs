@@ -136,9 +136,9 @@ mod tests {
     use escargot::{CargoBuild, CargoRun};
     use hmmcli::entries::Entries;
     use lazy_static::lazy_static;
-    use std::fs::File;
     use std::io::BufReader;
     use std::path::PathBuf;
+    use std::{fs::File, path::Path};
     use tempfile::NamedTempFile;
     use test_case::test_case;
 
@@ -151,7 +151,7 @@ mod tests {
             .unwrap();
     }
 
-    fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
+    fn run_with_path(path: &Path, args: Vec<&str>) -> Assert {
         HMM.command()
             .arg("--path")
             .arg(path.as_os_str())
