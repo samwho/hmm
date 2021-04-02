@@ -118,8 +118,14 @@ impl<T: Seek + Read + BufRead> Entries<T> {
             };
 
             if entry.datetime() >= date {
+                if cur == 0 {
+                    break;
+                }
                 end = cur - 1;
             } else {
+                if cur == file_size {
+                    break;
+                }
                 start = cur + 1;
             }
         }
@@ -249,6 +255,22 @@ mod tests {
             .next_entry()
             .unwrap()
             .map(|e| e.message().to_owned())
+    }
+
+    #[test]
+    fn test_seek_to_first_single_entry() {
+        let date = DateTime::parse_from_rfc3339("2021-04-02T00:00:00Z").unwrap();
+        let r = Cursor::new(Vec::from(
+            "2021-04-02T20:05:39.428673666+00:00,\"\"\"Hello world\"\"\"\n".as_bytes(),
+        ));
+        let mut entries = Entries::new(r);
+        entries.seek_to_first(&date).unwrap();
+        let message = entries
+            .next_entry()
+            .unwrap()
+            .map(|e| e.message().to_owned());
+
+        assert_eq!(message, Some("Hello world".to_string()));
     }
 
     #[test]

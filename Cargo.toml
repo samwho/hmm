@@ -23,28 +23,28 @@ maintenance = { status = "actively-developed" }
 csv = "1.1"
 quick-csv = "0.1"
 chrono = "0.4"
-dirs = "2.0"
-itertools = "0.9"
-textwrap = { version = "0.11", features = ["term_size"] }
-colored = "1.9"
+dirs = "3.0.1"
+itertools = "0.10.0"
+textwrap = { version = "0.11.0", features = ["term_size"] }
+colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3.1"
 structopt = { version = "0.3", default-features = false }
 fs2 = "0.4"
-rand = "0.7"
+rand = "0.8.3"
 handlebars = "3.0"
 regex = "1.3"
-lipsum = "0.6"
-indicatif = "0.14"
+lipsum = "0.7.0"
+indicatif = "0.15.0"
 lazy_static = "1"
 shellwords = "1"
-termimad = "0.8"
+termimad = "0.10.1"
 human-panic = "1"
 
 [dev-dependencies]
 test-case = "1.0.0"
-assert_cmd = "0.12"
+assert_cmd = "1.0.3"
 escargot = "0.5"
 
 [profile.release]
