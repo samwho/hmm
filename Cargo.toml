@@ -1,6 +1,6 @@
 [package]
 name = "hmmcli"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Sam Rose <hello@samwho.dev>"]
 edition = "2018"
 license = "MIT"
