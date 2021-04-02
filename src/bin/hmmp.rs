@@ -24,13 +24,13 @@ struct Opt {
 fn main() {
     setup_panic!();
 
-    if let Err(e) = app(Opt::from_args(), stdin().lock()) {
+    if let Err(e) = app(&Opt::from_args(), stdin().lock()) {
         eprintln!("{}", e);
         exit(1);
     }
 }
 
-fn app(opt: Opt, stdin: impl BufRead) -> Result<()> {
+fn app(opt: &Opt, stdin: impl BufRead) -> Result<()> {
     let mut formatter = Format::with_template(&opt.format)?;
 
     for line in stdin.lines() {

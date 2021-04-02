@@ -315,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn test_iterator() -> Result<()> {
+    fn test_iterator() {
         let r = Cursor::new(Vec::from(TESTDATA.as_bytes()));
         let mut entries = Entries::new(r);
 
@@ -326,6 +326,5 @@ mod tests {
         assert_eq!(entries.next().unwrap().unwrap().message(), "5");
         assert_eq!(entries.next().unwrap().unwrap().message(), "6");
         assert_eq!(entries.next().is_none(), true);
-        Ok(())
     }
 }

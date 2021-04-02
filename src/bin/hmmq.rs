@@ -150,20 +150,17 @@ fn app(opt: Opt) -> Result<()> {
     }
 
     if let Some(last) = opt.last {
-        match opt.end {
-            Some(ref end_date) => {
-                // Because --end is exclusive, all we need to do is seek to the
-                // first occurrence of a given time and then work backward from
-                // there.
-                entries.seek_to_first(end_date)?;
-            }
-            None => {
-                // We read the last entry to get to the end of the file. We'll
-                // end up reading the entry again later, so it's definitely not
-                // the most optimal way to achieve this but it is the simplest.
-                let len = entries.len()?;
-                entries.at(len)?;
-            }
+        if let Some(ref end_date) = opt.end {
+            // Because --end is exclusive, all we need to do is seek to the
+            // first occurrence of a given time and then work backward from
+            // there.
+            entries.seek_to_first(end_date)?;
+        } else {
+            // We read the last entry to get to the end of the file. We'll
+            // end up reading the entry again later, so it's definitely not
+            // the most optimal way to achieve this but it is the simplest.
+            let len = entries.len()?;
+            entries.at(len)?;
         }
 
         // Seek back --last number of lines so the loop begins where we want it
@@ -258,8 +255,8 @@ mod tests {
     use assert_cmd::{assert::Assert, prelude::*};
     use escargot::{CargoBuild, CargoRun};
     use lazy_static::lazy_static;
-    use std::io::Write;
     use std::path::PathBuf;
+    use std::{io::Write, path::Path};
     use tempfile::NamedTempFile;
     use test_case::test_case;
 
@@ -272,7 +269,7 @@ mod tests {
             .unwrap();
     }
 
-    fn run_with_path(path: &PathBuf, args: Vec<&str>) -> Assert {
+    fn run_with_path(path: &Path, args: Vec<&str>) -> Assert {
         HMMQ.command()
             .arg("--path")
             .arg(path.as_os_str())

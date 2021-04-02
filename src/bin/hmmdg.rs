@@ -31,13 +31,13 @@ struct Opt {
 fn main() {
     setup_panic!();
 
-    if let Err(e) = app(Opt::from_args()) {
+    if let Err(e) = app(&Opt::from_args()) {
         eprintln!("{}", e);
         exit(1);
     }
 }
 
-fn app(opt: Opt) -> Result<()> {
+fn app(opt: &Opt) -> Result<()> {
     let mut fopts = std::fs::OpenOptions::new();
     fopts.create_new(true);
     fopts.write(true);
