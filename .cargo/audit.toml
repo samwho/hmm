@@ -1,0 +1,5 @@
+[advisories]
+ignore = [
+    # We don't parse JSON, so we're not vulnerable to this.
+    "RUSTSEC-2022-0004",
+]
