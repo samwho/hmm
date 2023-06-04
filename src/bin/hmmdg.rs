@@ -63,9 +63,10 @@ fn app(opt: &Opt) -> Result<()> {
 
     let sty = indicatif::ProgressStyle::default_bar()
         .template("[{elapsed_precise}] {wide_bar:.cyan/blue} {pos}/{len} {percent}% {eta_precise}")
+        .unwrap()
         .progress_chars("##-");
     let pb = indicatif::ProgressBar::new(opt.entries_per_day * opt.num_days);
-    pb.set_draw_delta(opt.entries_per_day * opt.num_days / 1000);
+    pb.enable_steady_tick(std::time::Duration::from_millis(100));
     pb.set_style(sty);
 
     for i in 0..(opt.entries_per_day * opt.num_days) {

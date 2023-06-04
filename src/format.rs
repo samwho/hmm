@@ -17,7 +17,7 @@ impl<'a> Format<'a> {
         renderer.set_strict_mode(true);
         renderer.register_escape_fn(|s| s.trim().to_owned());
         renderer.register_template_string("template", template)?;
-        renderer.register_helper("indent", Box::new(IndentHelper::new()));
+        renderer.register_helper("indent", Box::new(IndentHelper {}));
         renderer.register_helper("strftime", Box::new(StrftimeHelper {}));
         renderer.register_helper("color", Box::new(ColorHelper {}));
         renderer.register_helper("markdown", Box::new(MarkdownHelper {}));
@@ -38,20 +38,9 @@ impl<'a> Format<'a> {
     }
 }
 
-struct IndentHelper<'a> {
-    opts: textwrap::Options<'a>,
-}
+struct IndentHelper {}
 
-impl<'a> IndentHelper<'a> {
-    fn new() -> Self {
-        let opts = textwrap::Options::with_termwidth()
-            .initial_indent("│ ")
-            .subsequent_indent("│ ");
-        IndentHelper { opts }
-    }
-}
-
-impl<'a> HelperDef for IndentHelper<'a> {
+impl<'a> HelperDef for IndentHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
         h: &Helper,
@@ -61,7 +50,7 @@ impl<'a> HelperDef for IndentHelper<'a> {
         out: &mut dyn Output,
     ) -> HelperResult {
         let param = h.param(0).unwrap();
-        Ok(out.write(&textwrap::fill(&param.value().render(), &self.opts))?)
+        Ok(out.write(&textwrap::indent(&param.value().render(), "│ "))?)
     }
 }
 

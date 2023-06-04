@@ -12,7 +12,6 @@ pub enum Error {
     ChronoParse(chrono::format::ParseError),
     SerdeJson(serde_json::error::Error),
     Template(handlebars::TemplateError),
-    TemplateRender(handlebars::TemplateRenderError),
     Render(handlebars::RenderError),
     Utf8(std::string::FromUtf8Error),
     Regex(regex::Error),
@@ -28,7 +27,6 @@ impl error::Error for Error {
             Error::ChronoParse(ref err) => Some(err),
             Error::SerdeJson(ref err) => Some(err),
             Error::Template(ref err) => Some(err),
-            Error::TemplateRender(ref err) => Some(err),
             Error::Render(ref err) => Some(err),
             Error::Utf8(ref err) => Some(err),
             Error::Regex(ref err) => Some(err),
@@ -46,7 +44,6 @@ impl fmt::Display for Error {
             Error::ChronoParse(ref err) => err.fmt(f),
             Error::SerdeJson(ref err) => err.fmt(f),
             Error::Template(ref err) => err.fmt(f),
-            Error::TemplateRender(ref err) => err.fmt(f),
             Error::Render(ref err) => err.fmt(f),
             Error::Utf8(ref err) => err.fmt(f),
             Error::Regex(ref err) => err.fmt(f),
@@ -82,12 +79,6 @@ impl From<std::string::FromUtf8Error> for Error {
 impl From<handlebars::RenderError> for Error {
     fn from(err: handlebars::RenderError) -> Error {
         Error::Render(err)
-    }
-}
-
-impl From<handlebars::TemplateRenderError> for Error {
-    fn from(err: handlebars::TemplateRenderError) -> Error {
-        Error::TemplateRender(err)
     }
 }
 
