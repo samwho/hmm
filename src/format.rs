@@ -39,15 +39,15 @@ impl<'a> Format<'a> {
 }
 
 struct IndentHelper<'a> {
-    wrapper: textwrap::Wrapper<'a, textwrap::HyphenSplitter>,
+    opts: textwrap::Options<'a>,
 }
 
 impl<'a> IndentHelper<'a> {
     fn new() -> Self {
-        let wrapper = textwrap::Wrapper::with_termwidth()
+        let opts = textwrap::Options::with_termwidth()
             .initial_indent("│ ")
             .subsequent_indent("│ ");
-        IndentHelper { wrapper }
+        IndentHelper { opts }
     }
 }
 
@@ -61,7 +61,7 @@ impl<'a> HelperDef for IndentHelper<'a> {
         out: &mut dyn Output,
     ) -> HelperResult {
         let param = h.param(0).unwrap();
-        Ok(out.write(&self.wrapper.fill(&param.value().render()))?)
+        Ok(out.write(&textwrap::fill(&param.value().render(), &self.opts))?)
     }
 }
 

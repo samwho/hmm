@@ -25,7 +25,7 @@ quick-csv = "0.1"
 chrono = "0.4"
 dirs = "3.0.1"
 itertools = "0.10.0"
-textwrap = { version = "0.11.0", features = ["term_size"] }
+textwrap = { version = "0.16.0", features = ["terminal_size"] }
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
