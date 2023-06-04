@@ -65,7 +65,7 @@ impl TryFrom<quick_csv::Row> for Entry {
 
         Ok(Entry {
             datetime: chrono::DateTime::parse_from_rfc3339(date)?,
-            message: serde_json::from_str(&msg)?,
+            message: serde_json::from_str(msg)?,
         })
     }
 }
@@ -79,7 +79,7 @@ impl TryFrom<&StringRecord> for Entry {
 
         Ok(Entry {
             datetime: chrono::DateTime::parse_from_rfc3339(date)?,
-            message: serde_json::from_str(&msg)?,
+            message: serde_json::from_str(msg)?,
         })
     }
 }

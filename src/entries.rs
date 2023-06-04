@@ -18,7 +18,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
     }
 
     pub fn len(&mut self) -> Result<u64> {
-        let prev = self.f.seek(SeekFrom::Current(0))?;
+        let prev = self.f.stream_position()?;
         let len = self.f.seek(SeekFrom::End(0))?;
         self.f.seek(SeekFrom::Start(prev))?;
         Ok(len)
@@ -85,7 +85,7 @@ impl<T: Seek + Read + BufRead> Entries<T> {
         // that's fine. We don't do this seek if we've previously read past the
         // end of the file, so that when we do read past the end of the file we
         // can again go back and read the last line.
-        if self.f.seek(SeekFrom::Current(0))? <= self.len()? {
+        if self.f.stream_position()? <= self.len()? {
             self.seek_to_prev()?;
         }
 
@@ -172,10 +172,7 @@ impl<T: Seek + Read + BufRead> Iterator for Entries<T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_entry() {
-            Ok(opt) => match opt {
-                Some(entry) => Some(Ok(entry)),
-                None => None,
-            },
+            Ok(opt) => opt.map(Ok),
             Err(e) => Some(Err(e)),
         }
     }

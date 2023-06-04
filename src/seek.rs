@@ -3,7 +3,7 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
 pub fn start_of_next_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     let mut buf = [0; 1];
-    let mut pos = f.seek(SeekFrom::Current(0))?;
+    let mut pos = f.stream_position()?;
 
     loop {
         pos += 1;
@@ -25,7 +25,7 @@ pub fn start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
     start_of_current_line(f)?;
 
     let mut buf = [0; 1];
-    let mut pos = f.seek(SeekFrom::Current(0))?;
+    let mut pos = f.stream_position()?;
 
     if pos == 0 {
         return Ok(None);
@@ -52,7 +52,7 @@ pub fn start_of_prev_line<T: Seek + Read>(f: &mut T) -> Result<Option<u64>> {
 
 pub fn start_of_current_line<T: Seek + Read>(f: &mut T) -> Result<u64> {
     let mut buf = [0; 1];
-    let mut pos = f.seek(SeekFrom::Current(0))?;
+    let mut pos = f.stream_position()?;
 
     if let Err(e) = f.read_exact(&mut buf) {
         // If we try to read past the end of the file, which is what

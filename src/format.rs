@@ -40,7 +40,7 @@ impl<'a> Format<'a> {
 
 struct IndentHelper {}
 
-impl<'a> HelperDef for IndentHelper {
+impl HelperDef for IndentHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
         h: &Helper,

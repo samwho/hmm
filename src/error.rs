@@ -11,7 +11,7 @@ pub enum Error {
     QuickCsv(quick_csv::error::Error),
     ChronoParse(chrono::format::ParseError),
     SerdeJson(serde_json::error::Error),
-    Template(handlebars::TemplateError),
+    Template(Box<handlebars::TemplateError>),
     Render(handlebars::RenderError),
     Utf8(std::string::FromUtf8Error),
     Regex(regex::Error),
@@ -84,7 +84,7 @@ impl From<handlebars::RenderError> for Error {
 
 impl From<handlebars::TemplateError> for Error {
     fn from(err: handlebars::TemplateError) -> Error {
-        Error::Template(err)
+        Error::Template(Box::new(err))
     }
 }
 
