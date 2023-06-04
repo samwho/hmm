@@ -122,7 +122,7 @@ mod tests {
         Format::with_template(template)
             .unwrap()
             .format_entry(&Entry::new(
-                Utc.ymd(2020, 1, 2).and_hms(3, 4, 5).into(),
+                DateTime::parse_from_rfc3339("2020-01-02T03:04:05Z").unwrap(),
                 "hello world".to_owned(),
             ))
             .unwrap()

@@ -281,23 +281,23 @@ mod tests {
         assert_eq!(entries.next_entry()?.unwrap().message(), "4");
         assert_eq!(entries.next_entry()?.unwrap().message(), "5");
         assert_eq!(entries.next_entry()?.unwrap().message(), "6");
-        assert_eq!(entries.next_entry()?.is_none(), true);
+        assert!(entries.next_entry()?.is_none());
         assert_eq!(entries.prev_entry()?.unwrap().message(), "6");
         assert_eq!(entries.prev_entry()?.unwrap().message(), "5");
         assert_eq!(entries.prev_entry()?.unwrap().message(), "4");
         assert_eq!(entries.prev_entry()?.unwrap().message(), "3");
         assert_eq!(entries.prev_entry()?.unwrap().message(), "2");
         assert_eq!(entries.prev_entry()?.unwrap().message(), "1");
-        assert_eq!(entries.prev_entry()?.is_none(), true);
-        assert_eq!(entries.prev_entry()?.is_none(), true);
-        assert_eq!(entries.prev_entry()?.is_none(), true);
+        assert!(entries.prev_entry()?.is_none());
+        assert!(entries.prev_entry()?.is_none());
+        assert!(entries.prev_entry()?.is_none());
         assert_eq!(entries.next_entry()?.unwrap().message(), "1");
         assert_eq!(entries.next_entry()?.unwrap().message(), "2");
         assert_eq!(entries.next_entry()?.unwrap().message(), "3");
         assert_eq!(entries.next_entry()?.unwrap().message(), "4");
         assert_eq!(entries.next_entry()?.unwrap().message(), "5");
         assert_eq!(entries.next_entry()?.unwrap().message(), "6");
-        assert_eq!(entries.next_entry()?.is_none(), true);
+        assert!(entries.next_entry()?.is_none());
         Ok(())
     }
 
@@ -322,6 +322,6 @@ mod tests {
         assert_eq!(entries.next().unwrap().unwrap().message(), "4");
         assert_eq!(entries.next().unwrap().unwrap().message(), "5");
         assert_eq!(entries.next().unwrap().unwrap().message(), "6");
-        assert_eq!(entries.next().is_none(), true);
+        assert!(entries.next().is_none());
     }
 }

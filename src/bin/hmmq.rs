@@ -342,9 +342,8 @@ mod tests {
         let assert = HMMQ.command().args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
-        assert_eq!(
+        assert!(
             stderr.contains(error),
-            true,
             "could not find \"{}\" in \"{}\"",
             error,
             stderr

@@ -185,9 +185,8 @@ mod tests {
         let path = new_tempfile_path();
         for message in &messages {
             let assert = run_with_path(&path, vec![message]);
-            assert_eq!(
+            assert!(
                 assert.get_output().stdout.is_empty(),
-                true,
                 "expected stdout to be empty"
             );
             assert.success();
@@ -206,7 +205,7 @@ mod tests {
 
             messages.push(entry.message().to_owned());
 
-            assert_eq!(true, &date <= entry.datetime());
+            assert!(&date <= entry.datetime());
             date = entry.datetime().to_owned();
         }
 
@@ -220,9 +219,8 @@ mod tests {
         let assert = HMM.command().args(args).assert();
         let stderr = String::from_utf8(assert.get_output().stderr.clone()).unwrap();
         assert.failure();
-        assert_eq!(
+        assert!(
             stderr.contains(error),
-            true,
             "could not find \"{}\" in \"{}\"",
             error,
             stderr
