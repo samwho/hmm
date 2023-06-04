@@ -16,7 +16,7 @@ struct Opt {
     /// values "datetime" and "message" are passed in.
     #[structopt(
         long = "format",
-        default_value = "{{ color \"blue\" (strftime \"%Y-%m-%d %H:%M:%S\" datetime) }}\n{{ indent message }}"
+        default_value = "╭ {{ color \"blue\" (strftime \"%Y-%m-%d %H:%M\" datetime) }}\n{{ indent (markdown message) }}╰─────────────────"
     )]
     format: String,
 }

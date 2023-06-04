@@ -88,7 +88,11 @@ impl TryFrom<&str> for Entry {
     type Error = Error;
 
     fn try_from(s: &str) -> Result<Self> {
-        quick_csv::Csv::from_string(s).next().unwrap()?.try_into()
+        let mut csv = quick_csv::Csv::from_string(s);
+        let next = csv
+            .next()
+            .ok_or_else(|| error::from_str("malformed CSV"))??;
+        next.try_into()
     }
 }
 
@@ -112,5 +116,14 @@ mod tests {
     fn test_from_str(s: &str) -> (String, String) {
         let entry: Entry = s.try_into().unwrap();
         (entry.datetime().to_rfc3339(), entry.message().to_owned())
+    }
+
+    #[test_case("not a csv" => "malformed CSV" ; "not a csv")]
+    #[test_case("." => "malformed CSV" ; "single dot")]
+    #[test_case("" => "malformed CSV" ; "empty string")]
+    fn test_invalid_lines(s: &str) -> String {
+        let result: Result<Entry> = s.try_into();
+        assert!(result.is_err());
+        result.err().unwrap().to_string()
     }
 }
