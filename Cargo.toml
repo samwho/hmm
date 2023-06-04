@@ -22,7 +22,7 @@ maintenance = { status = "actively-developed" }
 [dependencies]
 csv = "1.2"
 quick-csv = "0.1"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 dirs = "5.0"
 itertools = "0.10"
 textwrap = { version = "0.16", features = ["terminal_size", "smawk"] }
